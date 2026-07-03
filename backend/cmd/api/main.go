@@ -82,14 +82,8 @@ func buildRouter(cfg config.Config, devLogin http.HandlerFunc, sessions tokenUse
 func authMiddleware(cfg config.Config, sessions tokenUserLookup) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			const prefix = "Bearer "
-			header := r.Header.Get("Authorization")
-			if !strings.HasPrefix(header, prefix) {
-				httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Login required")
-				return
-			}
-			token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
-			if token == "" || sessions == nil {
+			token, ok := extractAccessToken(r)
+			if !ok || sessions == nil {
 				httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Login required")
 				return
 			}
@@ -101,6 +95,20 @@ func authMiddleware(cfg config.Config, sessions tokenUserLookup) func(http.Handl
 			next.ServeHTTP(w, r.WithContext(httpx.WithUserID(r.Context(), userID)))
 		})
 	}
+}
+
+func extractAccessToken(r *http.Request) (string, bool) {
+	const prefix = "Bearer "
+	header := r.Header.Get("Authorization")
+	if header != "" {
+		if !strings.HasPrefix(header, prefix) {
+			return "", false
+		}
+		token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
+		return token, token != ""
+	}
+	token := strings.TrimSpace(r.URL.Query().Get("access_token"))
+	return token, token != ""
 }
 
 func (f authUserFinder) FindByWorkspaceUsername(ctx context.Context, workspaceID int64, username string) (auth.User, error) {

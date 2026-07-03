@@ -3,6 +3,7 @@ package conversations
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 type SQLRepository struct {
@@ -31,7 +32,7 @@ func (r *SQLRepository) Create(ctx context.Context, input CreateConversationInpu
 	if err != nil {
 		return Conversation{}, err
 	}
-	for _, memberID := range uniqueMemberIDs(input.CreatedBy, input.MemberIDs) {
+	for _, memberID := range input.MemberIDs {
 		role := "member"
 		if memberID == input.CreatedBy {
 			role = "owner"
@@ -106,4 +107,24 @@ func (r *SQLRepository) ListForUser(ctx context.Context, workspaceID int64, user
 		out = append(out, conversation)
 	}
 	return out, rows.Err()
+}
+
+func (r *SQLRepository) CountUsersInWorkspace(ctx context.Context, workspaceID int64, memberIDs []int64) (int, error) {
+	if len(memberIDs) == 0 {
+		return 0, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(memberIDs)), ",")
+	args := make([]any, 0, len(memberIDs)+1)
+	args = append(args, workspaceID)
+	for _, memberID := range memberIDs {
+		args = append(args, memberID)
+	}
+
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT id)
+		FROM users
+		WHERE workspace_id = ? AND id IN (`+placeholders+`)
+	`, args...).Scan(&count)
+	return count, err
 }

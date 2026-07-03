@@ -2,7 +2,6 @@ package conversations
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"vibework-chat/backend/internal/httpx"
@@ -59,7 +58,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	conversation, err := h.service.Create(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, ErrGroupNeedsThreeMembers) {
+		if isValidationError(err) {
 			httpx.WriteError(w, http.StatusBadRequest, "conversation_invalid", err.Error())
 			return
 		}

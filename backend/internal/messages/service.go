@@ -7,6 +7,7 @@ import (
 )
 
 var ErrEmptyMessage = errors.New("message content is empty")
+var ErrNotFound = errors.New("conversation not found")
 
 type Message struct {
 	ID              int64  `json:"id"`
@@ -25,7 +26,7 @@ type SendInput struct {
 
 type Repository interface {
 	Create(ctx context.Context, input SendInput, contentPlain string) (Message, error)
-	ListBefore(ctx context.Context, conversationID int64, beforeID int64, limit int) ([]Message, error)
+	ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error)
 	MarkRead(ctx context.Context, conversationID int64, userID int64) error
 }
 
@@ -44,11 +45,11 @@ func (s *Service) Send(ctx context.Context, input SendInput) (Message, error) {
 	return s.repo.Create(ctx, input, PlainTextFromMarkdown(input.ContentMarkdown))
 }
 
-func (s *Service) ListBefore(ctx context.Context, conversationID int64, beforeID int64, limit int) ([]Message, error) {
+func (s *Service) ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
-	return s.repo.ListBefore(ctx, conversationID, beforeID, limit)
+	return s.repo.ListBefore(ctx, conversationID, userID, beforeID, limit)
 }
 
 func (s *Service) MarkRead(ctx context.Context, conversationID int64, userID int64) error {

@@ -20,6 +20,10 @@ func (r *SQLRepository) Create(ctx context.Context, input SendInput, contentPlai
 	}
 	defer tx.Rollback()
 
+	if err := requireMember(ctx, tx, input.ConversationID, input.SenderID); err != nil {
+		return Message{}, err
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO messages (conversation_id, sender_id, content_markdown, content_plain)
 		VALUES (?, ?, ?, ?)
@@ -66,14 +70,18 @@ func (r *SQLRepository) Create(ctx context.Context, input SendInput, contentPlai
 	}, nil
 }
 
-func (r *SQLRepository) ListBefore(ctx context.Context, conversationID int64, beforeID int64, limit int) ([]Message, error) {
+func (r *SQLRepository) ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error) {
+	if err := requireMember(ctx, r.db, conversationID, userID); err != nil {
+		return nil, err
+	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, conversation_id, sender_id, content_markdown, content_plain, CAST(created_at AS CHAR)
-		FROM messages
-		WHERE conversation_id = ? AND (? = 0 OR id < ?)
-		ORDER BY id DESC
+		SELECT m.id, m.conversation_id, m.sender_id, m.content_markdown, m.content_plain, CAST(m.created_at AS CHAR)
+		FROM messages m
+		JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = ?
+		WHERE m.conversation_id = ? AND (? = 0 OR m.id < ?)
+		ORDER BY m.id DESC
 		LIMIT ?
-	`, conversationID, beforeID, beforeID, limit)
+	`, userID, conversationID, beforeID, beforeID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -98,11 +106,43 @@ func (r *SQLRepository) ListBefore(ctx context.Context, conversationID int64, be
 }
 
 func (r *SQLRepository) MarkRead(ctx context.Context, conversationID int64, userID int64) error {
-	_, err := r.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE conversation_members
 		SET unread_count = 0,
 		    last_read_message_id = (SELECT last_message_id FROM conversations WHERE id = ?)
 		WHERE conversation_id = ? AND user_id = ?
 	`, conversationID, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	return errIfNoRowsAffected(result)
+}
+
+type memberChecker interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func requireMember(ctx context.Context, db memberChecker, conversationID int64, userID int64) error {
+	var one int
+	err := db.QueryRowContext(ctx, `
+		SELECT 1
+		FROM conversation_members
+		WHERE conversation_id = ? AND user_id = ?
+		LIMIT 1
+	`, conversationID, userID).Scan(&one)
+	if err == sql.ErrNoRows {
+		return ErrNotFound
+	}
 	return err
+}
+
+func errIfNoRowsAffected(result sql.Result) error {
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
