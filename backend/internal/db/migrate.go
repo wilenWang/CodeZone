@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -11,6 +12,10 @@ import (
 
 type MigrationOptions struct {
 	IncludeDevSeed bool
+}
+
+type statementExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
 func SortMigrationFiles(files []string) []string {
@@ -24,6 +29,13 @@ func RunMigrations(conn *sql.DB, dir string) error {
 }
 
 func RunMigrationsWithOptions(conn *sql.DB, dir string, opts MigrationOptions) error {
+	ctx := context.Background()
+	pinnedConn, err := conn.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("connect for migrations: %w", err)
+	}
+	defer pinnedConn.Close()
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("read migrations dir %s: %w", dir, err)
@@ -39,10 +51,17 @@ func RunMigrationsWithOptions(conn *sql.DB, dir string, opts MigrationOptions) e
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
-		for i, stmt := range SplitSQLStatements(string(body)) {
-			if _, err := conn.Exec(stmt); err != nil {
-				return fmt.Errorf("run migration %s statement %d: %w", name, i+1, err)
-			}
+		if err := runMigrationStatements(ctx, pinnedConn, name, SplitSQLStatements(string(body))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runMigrationStatements(ctx context.Context, exec statementExecutor, name string, statements []string) error {
+	for i, stmt := range statements {
+		if _, err := exec.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("run migration %s statement %d: %w", name, i+1, err)
 		}
 	}
 	return nil

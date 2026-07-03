@@ -1,6 +1,12 @@
 package db
 
-import "testing"
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestMigrationFilesAreSorted(t *testing.T) {
 	files := []string{"0002_seed_dev.sql", "0001_schema.sql"}
@@ -50,5 +56,21 @@ func TestFilterMigrationFilesHonorsDevSeed(t *testing.T) {
 		if withoutSeed[i] != wantWithoutSeed[i] {
 			t.Fatalf("without seed index %d: got %q want %q", i, withoutSeed[i], wantWithoutSeed[i])
 		}
+	}
+}
+
+type failingStatementExecutor struct{}
+
+func (failingStatementExecutor) ExecContext(context.Context, string, ...any) (sql.Result, error) {
+	return nil, errors.New("boom")
+}
+
+func TestRunMigrationStatementsWrapsStatementError(t *testing.T) {
+	err := runMigrationStatements(context.Background(), failingStatementExecutor{}, "0001_schema.sql", []string{"SELECT 1"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "run migration 0001_schema.sql statement 1: boom") {
+		t.Fatalf("got error %q", err)
 	}
 }
