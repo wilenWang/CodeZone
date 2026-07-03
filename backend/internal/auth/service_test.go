@@ -13,11 +13,13 @@ import (
 )
 
 type fakeUserFinder struct {
-	users map[string]User
-	err   error
+	users       map[string]User
+	err         error
+	workspaceID int64
 }
 
-func (f fakeUserFinder) FindByUsername(_ context.Context, username string) (User, error) {
+func (f *fakeUserFinder) FindByWorkspaceUsername(_ context.Context, workspaceID int64, username string) (User, error) {
+	f.workspaceID = workspaceID
 	if f.err != nil {
 		return User{}, f.err
 	}
@@ -44,7 +46,7 @@ func (f *fakeSessionStore) Create(_ context.Context, userID int64, tokenHash str
 func TestDevLoginCreatesSessionForSeedUser(t *testing.T) {
 	ctx := context.Background()
 	sessions := &fakeSessionStore{}
-	users := fakeUserFinder{users: map[string]User{
+	users := &fakeUserFinder{users: map[string]User{
 		"alice": {
 			ID:          1,
 			WorkspaceID: 1,
@@ -53,7 +55,7 @@ func TestDevLoginCreatesSessionForSeedUser(t *testing.T) {
 			UserType:    "human",
 		},
 	}}
-	svc := NewService(users, sessions, "test-secret")
+	svc := NewService(users, sessions, "test-secret", 1)
 
 	result, err := svc.DevLogin(ctx, "alice")
 	if err != nil {
@@ -65,6 +67,9 @@ func TestDevLoginCreatesSessionForSeedUser(t *testing.T) {
 	}
 	if result.User.ID != 1 || result.User.Username != "alice" {
 		t.Fatalf("unexpected user: %+v", result.User)
+	}
+	if users.workspaceID != 1 {
+		t.Fatalf("expected workspace lookup for workspace 1, got %d", users.workspaceID)
 	}
 	if sessions.userID != 1 {
 		t.Fatalf("expected session for user 1, got %d", sessions.userID)
@@ -84,28 +89,36 @@ func TestDevLoginCreatesSessionForSeedUser(t *testing.T) {
 }
 
 func TestDevLoginReturnsInvalidCredentialsForMissingUser(t *testing.T) {
-	svc := NewService(fakeUserFinder{users: map[string]User{}}, &fakeSessionStore{}, "test-secret")
+	users := &fakeUserFinder{users: map[string]User{}}
+	svc := NewService(users, &fakeSessionStore{}, "test-secret", 1)
 
 	_, err := svc.DevLogin(context.Background(), "missing")
 
 	if !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
 	}
+	if users.workspaceID != 1 {
+		t.Fatalf("expected workspace lookup for workspace 1, got %d", users.workspaceID)
+	}
 }
 
 func TestDevLoginPropagatesLookupFailure(t *testing.T) {
 	lookupErr := errors.New("lookup failed")
-	svc := NewService(fakeUserFinder{err: lookupErr}, &fakeSessionStore{}, "test-secret")
+	users := &fakeUserFinder{err: lookupErr}
+	svc := NewService(users, &fakeSessionStore{}, "test-secret", 1)
 
 	_, err := svc.DevLogin(context.Background(), "alice")
 
 	if !errors.Is(err, lookupErr) {
 		t.Fatalf("expected lookup error, got %v", err)
 	}
+	if users.workspaceID != 1 {
+		t.Fatalf("expected workspace lookup for workspace 1, got %d", users.workspaceID)
+	}
 }
 
 func TestDevLoginHandlerWritesInvalidCredentialsCode(t *testing.T) {
-	handler := NewHandler(NewService(fakeUserFinder{users: map[string]User{}}, &fakeSessionStore{}, "test-secret"))
+	handler := NewHandler(NewService(&fakeUserFinder{users: map[string]User{}}, &fakeSessionStore{}, "test-secret", 1))
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/dev-login", strings.NewReader(`{"username":"missing"}`))
 	rec := httptest.NewRecorder()
 
@@ -124,7 +137,7 @@ func TestDevLoginHandlerWritesInvalidCredentialsCode(t *testing.T) {
 }
 
 func TestDevLoginHandlerWritesAuthFailedCodeForLookupFailure(t *testing.T) {
-	handler := NewHandler(NewService(fakeUserFinder{err: errors.New("lookup failed")}, &fakeSessionStore{}, "test-secret"))
+	handler := NewHandler(NewService(&fakeUserFinder{err: errors.New("lookup failed")}, &fakeSessionStore{}, "test-secret", 1))
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/dev-login", strings.NewReader(`{"username":"alice"}`))
 	rec := httptest.NewRecorder()
 

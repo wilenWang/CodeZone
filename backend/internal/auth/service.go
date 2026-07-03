@@ -23,7 +23,7 @@ type User struct {
 }
 
 type UserFinder interface {
-	FindByUsername(ctx context.Context, username string) (User, error)
+	FindByWorkspaceUsername(ctx context.Context, workspaceID int64, username string) (User, error)
 }
 
 type SessionStore interface {
@@ -31,9 +31,10 @@ type SessionStore interface {
 }
 
 type Service struct {
-	users    UserFinder
-	sessions SessionStore
-	secret   string
+	users       UserFinder
+	sessions    SessionStore
+	secret      string
+	workspaceID int64
 }
 
 type LoginResult struct {
@@ -41,11 +42,12 @@ type LoginResult struct {
 	User  User   `json:"user"`
 }
 
-func NewService(users UserFinder, sessions SessionStore, secret string) *Service {
+func NewService(users UserFinder, sessions SessionStore, secret string, workspaceID int64) *Service {
 	return &Service{
-		users:    users,
-		sessions: sessions,
-		secret:   secret,
+		users:       users,
+		sessions:    sessions,
+		secret:      secret,
+		workspaceID: workspaceID,
 	}
 }
 
@@ -54,7 +56,7 @@ func (s *Service) DevLogin(ctx context.Context, username string) (LoginResult, e
 		return LoginResult{}, ErrInvalidCredentials
 	}
 
-	user, err := s.users.FindByUsername(ctx, username)
+	user, err := s.users.FindByWorkspaceUsername(ctx, s.workspaceID, username)
 	if errors.Is(err, sql.ErrNoRows) {
 		return LoginResult{}, ErrInvalidCredentials
 	}
