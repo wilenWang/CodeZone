@@ -16,7 +16,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	if err := db.RunMigrations(conn, filepath.Join("migrations")); err != nil {
+	if err := db.RunMigrationsWithOptions(conn, filepath.Join("migrations"), db.MigrationOptions{IncludeDevSeed: cfg.DevSeed}); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("migrations applied")

@@ -68,6 +68,24 @@ CREATE TABLE IF NOT EXISTS messages (
   CONSTRAINT messages_sender_fk FOREIGN KEY (sender_id) REFERENCES users(id)
 );
 
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'conversations' AND CONSTRAINT_NAME = 'conversations_last_message_fk') = 0,
+  'ALTER TABLE conversations ADD KEY conversations_last_message_idx (last_message_id), ADD CONSTRAINT conversations_last_message_fk FOREIGN KEY (last_message_id) REFERENCES messages(id)',
+  'DO 0'
+);
+PREPARE migration_stmt FROM @sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'conversation_members' AND CONSTRAINT_NAME = 'conversation_members_last_read_message_fk') = 0,
+  'ALTER TABLE conversation_members ADD KEY conversation_members_last_read_message_idx (last_read_message_id), ADD CONSTRAINT conversation_members_last_read_message_fk FOREIGN KEY (last_read_message_id) REFERENCES messages(id)',
+  'DO 0'
+);
+PREPARE migration_stmt FROM @sql;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+
 CREATE TABLE IF NOT EXISTS agent_profiles (
   user_id BIGINT PRIMARY KEY,
   kind ENUM('mock') NOT NULL,
