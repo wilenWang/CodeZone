@@ -11,12 +11,11 @@ import (
 )
 
 type SessionRepository struct {
-	db     *sql.DB
-	secret string
+	db *sql.DB
 }
 
-func NewSessionRepository(db *sql.DB, secret string) *SessionRepository {
-	return &SessionRepository{db: db, secret: secret}
+func NewSessionRepository(db *sql.DB, _ string) *SessionRepository {
+	return &SessionRepository{db: db}
 }
 
 func (r *SessionRepository) Create(ctx context.Context, userID int64, tokenHash string, expiresAt time.Time) error {
@@ -27,14 +26,14 @@ func (r *SessionRepository) Create(ctx context.Context, userID int64, tokenHash 
 	return err
 }
 
-func (r *SessionRepository) UserIDByToken(ctx context.Context, token string) (int64, error) {
+func (r *SessionRepository) UserIDByToken(ctx context.Context, tokenHash string) (int64, error) {
 	const query = `
 		SELECT user_id
 		FROM sessions
 		WHERE token_hash = ? AND expires_at > ?
 		LIMIT 1`
 	var userID int64
-	if err := r.db.QueryRowContext(ctx, query, HashToken(token, r.secret), time.Now()).Scan(&userID); err != nil {
+	if err := r.db.QueryRowContext(ctx, query, tokenHash, time.Now()).Scan(&userID); err != nil {
 		return 0, err
 	}
 	return userID, nil
