@@ -19,6 +19,13 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
+	userID, ok := httpx.UserID(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Login required")
+		return
+	}
+	_ = userID
+
 	conversationID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "bad_conversation_id", "Invalid conversation id")
