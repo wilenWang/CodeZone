@@ -3,9 +3,15 @@ package httpx
 import "net/http"
 
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Details any    `json:"details"`
 }
 
-func WriteError(w http.ResponseWriter, status int, message string) {
-	WriteJSON(w, status, ErrorResponse{Error: message})
+func WriteError(w http.ResponseWriter, status int, code string, message string) {
+	WriteJSON(w, status, ErrorResponse{
+		Code:    code,
+		Message: message,
+		Details: map[string]any{},
+	})
 }

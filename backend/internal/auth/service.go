@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -54,7 +55,13 @@ func (s *Service) DevLogin(ctx context.Context, username string) (LoginResult, e
 	}
 
 	user, err := s.users.FindByUsername(ctx, username)
-	if err != nil || user.ID == 0 {
+	if errors.Is(err, sql.ErrNoRows) {
+		return LoginResult{}, ErrInvalidCredentials
+	}
+	if err != nil {
+		return LoginResult{}, err
+	}
+	if user.ID == 0 {
 		return LoginResult{}, ErrInvalidCredentials
 	}
 

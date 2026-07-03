@@ -2,16 +2,30 @@ package auth
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
 
 type fakeUserFinder struct {
 	users map[string]User
+	err   error
 }
 
 func (f fakeUserFinder) FindByUsername(_ context.Context, username string) (User, error) {
-	return f.users[username], nil
+	if f.err != nil {
+		return User{}, f.err
+	}
+	user, ok := f.users[username]
+	if !ok {
+		return User{}, sql.ErrNoRows
+	}
+	return user, nil
 }
 
 type fakeSessionStore struct {
@@ -66,5 +80,64 @@ func TestDevLoginCreatesSessionForSeedUser(t *testing.T) {
 	}
 	if got := HashToken(result.Token, "test-secret"); got != sessions.tokenHash {
 		t.Fatalf("expected stored hash %q, got %q", got, sessions.tokenHash)
+	}
+}
+
+func TestDevLoginReturnsInvalidCredentialsForMissingUser(t *testing.T) {
+	svc := NewService(fakeUserFinder{users: map[string]User{}}, &fakeSessionStore{}, "test-secret")
+
+	_, err := svc.DevLogin(context.Background(), "missing")
+
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
+	}
+}
+
+func TestDevLoginPropagatesLookupFailure(t *testing.T) {
+	lookupErr := errors.New("lookup failed")
+	svc := NewService(fakeUserFinder{err: lookupErr}, &fakeSessionStore{}, "test-secret")
+
+	_, err := svc.DevLogin(context.Background(), "alice")
+
+	if !errors.Is(err, lookupErr) {
+		t.Fatalf("expected lookup error, got %v", err)
+	}
+}
+
+func TestDevLoginHandlerWritesInvalidCredentialsCode(t *testing.T) {
+	handler := NewHandler(NewService(fakeUserFinder{users: map[string]User{}}, &fakeSessionStore{}, "test-secret"))
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/dev-login", strings.NewReader(`{"username":"missing"}`))
+	rec := httptest.NewRecorder()
+
+	handler.DevLogin(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d", rec.Code)
+	}
+	var body map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["code"] != "invalid_credentials" {
+		t.Fatalf("expected invalid_credentials code, got %v", body["code"])
+	}
+}
+
+func TestDevLoginHandlerWritesAuthFailedCodeForLookupFailure(t *testing.T) {
+	handler := NewHandler(NewService(fakeUserFinder{err: errors.New("lookup failed")}, &fakeSessionStore{}, "test-secret"))
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/dev-login", strings.NewReader(`{"username":"alice"}`))
+	rec := httptest.NewRecorder()
+
+	handler.DevLogin(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", rec.Code)
+	}
+	var body map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["code"] != "auth_failed" {
+		t.Fatalf("expected auth_failed code, got %v", body["code"])
 	}
 }

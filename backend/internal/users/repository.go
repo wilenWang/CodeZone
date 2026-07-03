@@ -31,6 +31,15 @@ func (r *Repository) FindByUsername(ctx context.Context, username string) (User,
 	return scanUser(r.db.QueryRowContext(ctx, query, username))
 }
 
+func (r *Repository) FindByWorkspaceUsername(ctx context.Context, workspaceID int64, username string) (User, error) {
+	const query = `
+		SELECT id, workspace_id, username, display_name, avatar_url, user_type
+		FROM users
+		WHERE workspace_id = ? AND username = ?
+		LIMIT 1`
+	return scanUser(r.db.QueryRowContext(ctx, query, workspaceID, username))
+}
+
 func (r *Repository) FindByID(ctx context.Context, id int64) (User, error) {
 	const query = `
 		SELECT id, workspace_id, username, display_name, avatar_url, user_type

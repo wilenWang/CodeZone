@@ -55,17 +55,17 @@ type devLoginRequest struct {
 func (h *Handler) DevLogin(w http.ResponseWriter, r *http.Request) {
 	var req devLoginRequest
 	if err := httpx.ReadJSON(r, &req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid json")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 
 	result, err := h.service.DevLogin(r.Context(), req.Username)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			httpx.WriteError(w, http.StatusUnauthorized, "invalid credentials")
+			httpx.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
 			return
 		}
-		httpx.WriteError(w, http.StatusInternalServerError, "failed to login")
+		httpx.WriteError(w, http.StatusInternalServerError, "auth_failed", "failed to login")
 		return
 	}
 

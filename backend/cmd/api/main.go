@@ -32,7 +32,9 @@ func main() {
 	userHandler := users.NewHandler(userService)
 
 	router := chi.NewRouter()
-	router.Post("/api/auth/dev-login", authHandler.DevLogin)
+	if cfg.DevSeed {
+		router.Post("/api/auth/dev-login", authHandler.DevLogin)
+	}
 	router.Get("/api/users", userHandler.List)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
@@ -47,7 +49,7 @@ type authUserFinder struct {
 }
 
 func (f authUserFinder) FindByUsername(ctx context.Context, username string) (auth.User, error) {
-	user, err := f.repo.FindByUsername(ctx, username)
+	user, err := f.repo.FindByWorkspaceUsername(ctx, 1, username)
 	if err != nil {
 		return auth.User{}, err
 	}
