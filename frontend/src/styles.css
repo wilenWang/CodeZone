@@ -17,3 +17,47 @@ body {
   display: grid;
   place-items: center;
 }
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+  border: 1px solid #d8dee4;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.seed-list {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.login-panel form {
+  display: grid;
+  gap: 10px;
+}
+
+button,
+input {
+  min-height: 40px;
+  border-radius: 6px;
+  border: 1px solid #c7d0d9;
+  padding: 0 12px;
+}
+
+button {
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.error-text {
+  color: #b42318;
+}
