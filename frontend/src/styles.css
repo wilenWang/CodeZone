@@ -194,3 +194,30 @@ button {
     border-bottom: 1px solid #d7e0e3;
   }
 }
+
+.admin-page {
+  padding: 24px;
+}
+
+.admin-section {
+  margin-bottom: 28px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+th,
+td {
+  border: 1px solid #d7e0e3;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #eef3f4;
+}

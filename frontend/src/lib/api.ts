@@ -28,6 +28,8 @@ export type Message = {
   createdAt: string;
 };
 
+export type AdminRow = Record<string, string | number | null>;
+
 export function authHeader(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -68,4 +70,16 @@ export function listMessages(token: string, conversationId: number): Promise<{ m
 
 export function sendMessage(token: string, conversationId: number, contentMarkdown: string): Promise<Message> {
   return apiPost(`/api/conversations/${conversationId}/messages`, token, { contentMarkdown });
+}
+
+export function adminUsers(token: string): Promise<{ users: AdminRow[] }> {
+  return apiGet("/api/admin/users", token);
+}
+
+export function adminConversations(token: string): Promise<{ conversations: AdminRow[] }> {
+  return apiGet("/api/admin/conversations", token);
+}
+
+export function adminMessages(token: string): Promise<{ messages: AdminRow[] }> {
+  return apiGet("/api/admin/messages", token);
 }
