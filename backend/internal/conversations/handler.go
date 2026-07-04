@@ -1,7 +1,6 @@
 package conversations
 
 import (
-	"context"
 	"net/http"
 
 	"vibework-chat/backend/internal/httpx"
@@ -9,15 +8,10 @@ import (
 
 type Handler struct {
 	service *Service
-	lister  interface {
-		ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error)
-	}
 }
 
-func NewHandler(service *Service, lister interface {
-	ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error)
-}) *Handler {
-	return &Handler{service: service, lister: lister}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +20,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "unauthorized", "Login required")
 		return
 	}
-	conversations, err := h.lister.ListForUser(r.Context(), 1, userID)
+	conversations, err := h.service.ListForUser(r.Context(), 1, userID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "conversations_failed", "Could not load conversations")
 		return

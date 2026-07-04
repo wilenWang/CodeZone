@@ -10,6 +10,8 @@ type fakeRepo struct {
 	createdType        string
 	memberIDs          []int64
 	workspaceUserCount int
+	listWorkspaceID    int64
+	listUserID         int64
 }
 
 func (f *fakeRepo) Create(ctx context.Context, input CreateConversationInput) (Conversation, error) {
@@ -23,6 +25,12 @@ func (f *fakeRepo) CountUsersInWorkspace(ctx context.Context, workspaceID int64,
 		return f.workspaceUserCount, nil
 	}
 	return len(memberIDs), nil
+}
+
+func (f *fakeRepo) ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error) {
+	f.listWorkspaceID = workspaceID
+	f.listUserID = userID
+	return []Conversation{{ID: 42, WorkspaceID: workspaceID}}, nil
 }
 
 func TestCreateGroupRequiresAtLeastThreeMembers(t *testing.T) {
@@ -112,6 +120,22 @@ func TestCreateDeduplicatesMembersAndIncludesCreatorOnce(t *testing.T) {
 		if repo.memberIDs[i] != want[i] {
 			t.Fatalf("got members %v want %v", repo.memberIDs, want)
 		}
+	}
+}
+
+func TestListForUserDelegatesToRepository(t *testing.T) {
+	repo := &fakeRepo{}
+	service := NewService(repo)
+
+	conversations, err := service.ListForUser(context.Background(), 9, 7)
+	if err != nil {
+		t.Fatalf("ListForUser returned error: %v", err)
+	}
+	if repo.listWorkspaceID != 9 || repo.listUserID != 7 {
+		t.Fatalf("got workspace/user %d/%d want 9/7", repo.listWorkspaceID, repo.listUserID)
+	}
+	if len(conversations) != 1 || conversations[0].ID != 42 {
+		t.Fatalf("unexpected conversations: %+v", conversations)
 	}
 }
 

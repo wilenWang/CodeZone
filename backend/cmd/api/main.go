@@ -36,7 +36,7 @@ func main() {
 	userHandler := users.NewHandler(userService)
 	conversationRepo := conversations.NewSQLRepository(conn)
 	conversationService := conversations.NewService(conversationRepo)
-	conversationHandler := conversations.NewHandler(conversationService, conversationRepo)
+	conversationHandler := conversations.NewHandler(conversationService)
 	messageRepo := messages.NewSQLRepository(conn)
 	messageService := messages.NewService(messageRepo)
 	messageHandler := messages.NewHandler(messageService)

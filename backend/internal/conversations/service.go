@@ -31,6 +31,7 @@ type CreateConversationInput struct {
 
 type Repository interface {
 	Create(ctx context.Context, input CreateConversationInput) (Conversation, error)
+	ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error)
 	CountUsersInWorkspace(ctx context.Context, workspaceID int64, memberIDs []int64) (int, error)
 }
 
@@ -69,6 +70,10 @@ func (s *Service) Create(ctx context.Context, input CreateConversationInput) (Co
 		return Conversation{}, ErrMembersOutsideWorkspace
 	}
 	return s.repo.Create(ctx, input)
+}
+
+func (s *Service) ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error) {
+	return s.repo.ListForUser(ctx, workspaceID, userID)
 }
 
 func uniqueMemberIDs(createdBy int64, memberIDs []int64) ([]int64, error) {
