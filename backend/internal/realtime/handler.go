@@ -12,7 +12,12 @@ import (
 	"vibework-chat/backend/internal/httpx"
 )
 
-const websocketWriteTimeout = 10 * time.Second
+const (
+	websocketPongWait      = 60 * time.Second
+	websocketPingInterval  = websocketPongWait * 9 / 10
+	websocketWriteTimeout  = 10 * time.Second
+	websocketMessageMaxLen = 512
+)
 
 type Handler struct {
 	hub      *Hub
@@ -55,6 +60,13 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	conn.SetReadLimit(websocketMessageMaxLen)
+	if err := conn.SetReadDeadline(time.Now().Add(websocketPongWait)); err != nil {
+		return
+	}
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+	})
 
 	subscription := h.hub.Register(userID)
 	defer h.hub.Unregister(userID, subscription)
@@ -66,6 +78,24 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 		defer conn.Close()
 		for {
 			if _, _, err := conn.NextReader(); err != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		ticker := time.NewTicker(websocketPingInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				deadline := time.Now().Add(websocketWriteTimeout)
+				if err := conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+					cancel()
+					_ = conn.Close()
+					return
+				}
+			case <-ctx.Done():
 				return
 			}
 		}

@@ -1,8 +1,15 @@
 package realtime
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+
+	"vibework-chat/backend/internal/config"
+	"vibework-chat/backend/internal/httpx"
 )
 
 func TestIsAllowedOrigin(t *testing.T) {
@@ -50,5 +57,35 @@ func TestIsAllowedOrigin(t *testing.T) {
 				t.Fatalf("got %t want %t", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestServeWSDeliversEventsForAuthenticatedUser(t *testing.T) {
+	hub := NewHub()
+	handler := NewHandler(hub, config.Config{})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeWS(w, r.WithContext(httpx.WithUserID(r.Context(), 42)))
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + server.URL[len("http"):]
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("Dial returned error: %v", err)
+	}
+	defer conn.Close()
+
+	hub.SendToUser(42, Event{Type: "message.created", Payload: "ok"})
+
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline returned error: %v", err)
+	}
+	var got Event
+	if err := conn.ReadJSON(&got); err != nil {
+		t.Fatalf("ReadJSON returned error: %v", err)
+	}
+	if got.Type != "message.created" || got.Payload != "ok" {
+		t.Fatalf("got event %#v want message.created payload ok", got)
 	}
 }
