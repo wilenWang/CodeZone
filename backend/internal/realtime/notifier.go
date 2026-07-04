@@ -23,8 +23,8 @@ func (n *SQLNotifier) MessageCreated(ctx context.Context, message messages.Messa
 	}
 	for _, userID := range memberIDs {
 		n.hub.SendToUser(userID, Event{
-			Type: "message.created",
-			Data: message,
+			Type:    "message.created",
+			Payload: message,
 		})
 	}
 	return nil
@@ -37,8 +37,8 @@ func (n *SQLNotifier) ConversationUpdated(ctx context.Context, conversationID in
 	}
 	for _, userID := range memberIDs {
 		n.hub.SendToUser(userID, Event{
-			Type: "conversation.updated",
-			Data: map[string]int64{"conversationId": conversationID},
+			Type:    "conversation.updated",
+			Payload: map[string]int64{"conversationId": conversationID},
 		})
 	}
 	return nil

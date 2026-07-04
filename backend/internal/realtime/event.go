@@ -1,6 +1,6 @@
 package realtime
 
 type Event struct {
-	Type string `json:"type"`
-	Data any    `json:"data,omitempty"`
+	Type    string `json:"type"`
+	Payload any    `json:"payload,omitempty"`
 }

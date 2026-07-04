@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 
@@ -19,10 +20,23 @@ func NewHandler(hub *Hub, cfg config.Config) *Handler {
 		hub: hub,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return r.Header.Get("Origin") == cfg.CORSOrigin
+				return isAllowedOrigin(r, cfg.CORSOrigin)
 			},
 		},
 	}
+}
+
+func isAllowedOrigin(r *http.Request, allowedOrigin string) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" || origin == allowedOrigin {
+		return true
+	}
+
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return originURL.Host == r.Host
 }
 
 func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {

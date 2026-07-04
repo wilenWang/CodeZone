@@ -7,7 +7,7 @@ func TestHubStoresConnectionsByUser(t *testing.T) {
 	events := make(chan Event, 1)
 
 	hub.Register(42, events)
-	hub.SendToUser(42, Event{Type: "message.created", Data: map[string]any{"id": int64(7)}})
+	hub.SendToUser(42, Event{Type: "message.created", Payload: map[string]any{"id": int64(7)}})
 
 	got := <-events
 	if got.Type != "message.created" {
