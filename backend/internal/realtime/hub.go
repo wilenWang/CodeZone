@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const maxSubscriptionBacklog = 256
+
 type Hub struct {
 	mu          sync.RWMutex
 	connections map[int64]map[*Subscription]struct{}
@@ -58,7 +60,9 @@ func (h *Hub) SendToUser(userID int64, event Event) {
 	h.mu.RUnlock()
 
 	for _, subscription := range userConnections {
-		subscription.enqueue(event)
+		if !subscription.enqueue(event) {
+			h.Unregister(userID, subscription)
+		}
 	}
 }
 
@@ -87,18 +91,22 @@ func (s *Subscription) Next(ctx context.Context) (Event, bool) {
 	}
 }
 
-func (s *Subscription) enqueue(event Event) {
+func (s *Subscription) enqueue(event Event) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.closed {
-		return
+		return false
+	}
+	if len(s.queue) >= maxSubscriptionBacklog {
+		return false
 	}
 	s.queue = append(s.queue, event)
 	select {
 	case s.notify <- struct{}{}:
 	default:
 	}
+	return true
 }
 
 func (s *Subscription) close() {

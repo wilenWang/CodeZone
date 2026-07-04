@@ -35,13 +35,13 @@ func TestSendToUserDoesNotBlockWhenSubscriptionHasPendingEvents(t *testing.T) {
 	subscription := hub.Register(42)
 	defer hub.Unregister(42, subscription)
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < maxSubscriptionBacklog; i++ {
 		hub.SendToUser(42, Event{Type: "message.created", Payload: i})
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < maxSubscriptionBacklog; i++ {
 		event, ok := subscription.Next(ctx)
 		if !ok {
 			t.Fatalf("subscription closed after %d events", i)
@@ -49,5 +49,30 @@ func TestSendToUserDoesNotBlockWhenSubscriptionHasPendingEvents(t *testing.T) {
 		if event.Payload != i {
 			t.Fatalf("got payload %#v want %d", event.Payload, i)
 		}
+	}
+}
+
+func TestSendToUserDisconnectsSubscriptionWhenBacklogIsFull(t *testing.T) {
+	hub := NewHub()
+	subscription := hub.Register(42)
+
+	for i := 0; i < maxSubscriptionBacklog; i++ {
+		hub.SendToUser(42, Event{Type: "message.created", Payload: i})
+	}
+	hub.SendToUser(42, Event{Type: "message.created", Payload: maxSubscriptionBacklog})
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	for i := 0; i < maxSubscriptionBacklog; i++ {
+		event, ok := subscription.Next(ctx)
+		if !ok {
+			t.Fatalf("subscription closed before draining backlog at %d", i)
+		}
+		if event.Payload != i {
+			t.Fatalf("got payload %#v want %d", event.Payload, i)
+		}
+	}
+	if event, ok := subscription.Next(ctx); ok {
+		t.Fatalf("got event after backlog disconnect: %#v", event)
 	}
 }

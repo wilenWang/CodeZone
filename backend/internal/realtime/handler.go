@@ -4,12 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 
 	"vibework-chat/backend/internal/config"
 	"vibework-chat/backend/internal/httpx"
 )
+
+const websocketWriteTimeout = 10 * time.Second
 
 type Handler struct {
 	hub      *Hub
@@ -60,6 +63,7 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	go func() {
 		defer cancel()
+		defer conn.Close()
 		for {
 			if _, _, err := conn.NextReader(); err != nil {
 				return
@@ -70,6 +74,9 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	for {
 		event, ok := subscription.Next(ctx)
 		if !ok {
+			return
+		}
+		if err := conn.SetWriteDeadline(time.Now().Add(websocketWriteTimeout)); err != nil {
 			return
 		}
 		if err := conn.WriteJSON(event); err != nil {
