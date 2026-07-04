@@ -37,12 +37,13 @@ func (h *Hub) Unregister(userID int64, events chan Event) {
 
 func (h *Hub) SendToUser(userID int64, event Event) {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
+	userConnections := make([]chan Event, 0, len(h.connections[userID]))
 	for events := range h.connections[userID] {
-		select {
-		case events <- event:
-		default:
-		}
+		userConnections = append(userConnections, events)
+	}
+	h.mu.RUnlock()
+
+	for _, events := range userConnections {
+		events <- event
 	}
 }
