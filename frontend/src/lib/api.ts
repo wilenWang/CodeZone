@@ -10,6 +10,24 @@ export type LoginResult = {
   user: User;
 };
 
+export type Conversation = {
+  id: number;
+  type: "direct" | "group";
+  title: string | null;
+  lastMessageId: number | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+};
+
+export type Message = {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  contentMarkdown: string;
+  contentPlain: string;
+  createdAt: string;
+};
+
 export function authHeader(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -38,4 +56,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export function devLogin(username: string): Promise<LoginResult> {
   return apiPost<LoginResult>("/api/auth/dev-login", null, { username });
+}
+
+export function listConversations(token: string): Promise<{ conversations: Conversation[] }> {
+  return apiGet("/api/conversations", token);
+}
+
+export function listMessages(token: string, conversationId: number): Promise<{ messages: Message[] }> {
+  return apiGet(`/api/conversations/${conversationId}/messages?limit=50`, token);
+}
+
+export function sendMessage(token: string, conversationId: number, contentMarkdown: string): Promise<Message> {
+  return apiPost(`/api/conversations/${conversationId}/messages`, token, { contentMarkdown });
 }

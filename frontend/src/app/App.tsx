@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { LoginPage } from "../features/auth/LoginPage";
+import { ChatPage } from "../features/chat/ChatPage";
 import type { User } from "../lib/api";
 import { queryClient } from "../lib/query";
 
@@ -11,7 +12,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {token && user ? (
-        <div className="app-shell">Logged in as {user.displayName}</div>
+        <ChatPage token={token} user={user} />
       ) : (
         <LoginPage
           onLogin={(nextToken, nextUser) => {
