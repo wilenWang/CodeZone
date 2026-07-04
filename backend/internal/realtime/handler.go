@@ -1,6 +1,7 @@
 package realtime
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 
@@ -52,13 +53,13 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	events := make(chan Event, 16)
-	h.hub.Register(userID, events)
-	defer h.hub.Unregister(userID, events)
+	subscription := h.hub.Register(userID)
+	defer h.hub.Unregister(userID, subscription)
 
-	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 	go func() {
-		defer close(done)
+		defer cancel()
 		for {
 			if _, _, err := conn.NextReader(); err != nil {
 				return
@@ -67,14 +68,11 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	for {
-		select {
-		case event := <-events:
-			if err := conn.WriteJSON(event); err != nil {
-				return
-			}
-		case <-done:
+		event, ok := subscription.Next(ctx)
+		if !ok {
 			return
-		case <-r.Context().Done():
+		}
+		if err := conn.WriteJSON(event); err != nil {
 			return
 		}
 	}

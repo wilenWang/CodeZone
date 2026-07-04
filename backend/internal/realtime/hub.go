@@ -1,27 +1,40 @@
 package realtime
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type Hub struct {
 	mu          sync.RWMutex
-	connections map[int64]map[chan Event]struct{}
+	connections map[int64]map[*Subscription]struct{}
+}
+
+type Subscription struct {
+	mu     sync.Mutex
+	queue  []Event
+	notify chan struct{}
+	closed bool
 }
 
 func NewHub() *Hub {
-	return &Hub{connections: map[int64]map[chan Event]struct{}{}}
+	return &Hub{connections: map[int64]map[*Subscription]struct{}{}}
 }
 
-func (h *Hub) Register(userID int64, events chan Event) {
+func (h *Hub) Register(userID int64) *Subscription {
+	subscription := &Subscription{notify: make(chan struct{}, 1)}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	if h.connections[userID] == nil {
-		h.connections[userID] = map[chan Event]struct{}{}
+		h.connections[userID] = map[*Subscription]struct{}{}
 	}
-	h.connections[userID][events] = struct{}{}
+	h.connections[userID][subscription] = struct{}{}
+	return subscription
 }
 
-func (h *Hub) Unregister(userID int64, events chan Event) {
+func (h *Hub) Unregister(userID int64, subscription *Subscription) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -29,7 +42,8 @@ func (h *Hub) Unregister(userID int64, events chan Event) {
 	if userConnections == nil {
 		return
 	}
-	delete(userConnections, events)
+	delete(userConnections, subscription)
+	subscription.close()
 	if len(userConnections) == 0 {
 		delete(h.connections, userID)
 	}
@@ -37,13 +51,66 @@ func (h *Hub) Unregister(userID int64, events chan Event) {
 
 func (h *Hub) SendToUser(userID int64, event Event) {
 	h.mu.RLock()
-	userConnections := make([]chan Event, 0, len(h.connections[userID]))
-	for events := range h.connections[userID] {
-		userConnections = append(userConnections, events)
+	userConnections := make([]*Subscription, 0, len(h.connections[userID]))
+	for subscription := range h.connections[userID] {
+		userConnections = append(userConnections, subscription)
 	}
 	h.mu.RUnlock()
 
-	for _, events := range userConnections {
-		events <- event
+	for _, subscription := range userConnections {
+		subscription.enqueue(event)
+	}
+}
+
+func (s *Subscription) Next(ctx context.Context) (Event, bool) {
+	for {
+		s.mu.Lock()
+		if len(s.queue) > 0 {
+			event := s.queue[0]
+			copy(s.queue, s.queue[1:])
+			s.queue = s.queue[:len(s.queue)-1]
+			s.mu.Unlock()
+			return event, true
+		}
+		if s.closed {
+			s.mu.Unlock()
+			return Event{}, false
+		}
+		notify := s.notify
+		s.mu.Unlock()
+
+		select {
+		case <-notify:
+		case <-ctx.Done():
+			return Event{}, false
+		}
+	}
+}
+
+func (s *Subscription) enqueue(event Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return
+	}
+	s.queue = append(s.queue, event)
+	select {
+	case s.notify <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Subscription) close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return
+	}
+	s.closed = true
+	select {
+	case s.notify <- struct{}{}:
+	default:
 	}
 }
