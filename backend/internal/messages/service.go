@@ -30,19 +30,37 @@ type Repository interface {
 	MarkRead(ctx context.Context, conversationID int64, userID int64) error
 }
 
+type Notifier interface {
+	MessageCreated(ctx context.Context, message Message) error
+	ConversationUpdated(ctx context.Context, conversationID int64) error
+}
+
 type Service struct {
-	repo Repository
+	repo     Repository
+	notifier Notifier
 }
 
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
+func NewServiceWithNotifier(repo Repository, notifier Notifier) *Service {
+	return &Service{repo: repo, notifier: notifier}
+}
+
 func (s *Service) Send(ctx context.Context, input SendInput) (Message, error) {
 	if strings.TrimSpace(input.ContentMarkdown) == "" {
 		return Message{}, ErrEmptyMessage
 	}
-	return s.repo.Create(ctx, input, PlainTextFromMarkdown(input.ContentMarkdown))
+	message, err := s.repo.Create(ctx, input, PlainTextFromMarkdown(input.ContentMarkdown))
+	if err != nil {
+		return Message{}, err
+	}
+	if s.notifier != nil {
+		_ = s.notifier.MessageCreated(ctx, message)
+		_ = s.notifier.ConversationUpdated(ctx, message.ConversationID)
+	}
+	return message, nil
 }
 
 func (s *Service) ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error) {

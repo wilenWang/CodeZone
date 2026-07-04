@@ -25,7 +25,13 @@ func (r *recordingRepo) Create(ctx context.Context, input SendInput, contentPlai
 	if r.createErr != nil {
 		return Message{}, r.createErr
 	}
-	return Message{ID: 1}, nil
+	return Message{
+		ID:              1,
+		ConversationID:  input.ConversationID,
+		SenderID:        input.SenderID,
+		ContentMarkdown: input.ContentMarkdown,
+		ContentPlain:    contentPlain,
+	}, nil
 }
 
 func (r *recordingRepo) ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error) {
@@ -64,6 +70,47 @@ func TestSendPropagatesNotFound(t *testing.T) {
 
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("got %v want ErrNotFound", err)
+	}
+}
+
+type recordingNotifier struct {
+	err                     error
+	messageCreatedCalled    bool
+	conversationUpdatedID   int64
+	messageCreatedMessageID int64
+}
+
+func (n *recordingNotifier) MessageCreated(ctx context.Context, message Message) error {
+	n.messageCreatedCalled = true
+	n.messageCreatedMessageID = message.ID
+	return n.err
+}
+
+func (n *recordingNotifier) ConversationUpdated(ctx context.Context, conversationID int64) error {
+	n.conversationUpdatedID = conversationID
+	return n.err
+}
+
+func TestSendNotifiesAfterSuccessfulCreateAndIgnoresNotifierErrors(t *testing.T) {
+	notifier := &recordingNotifier{err: errors.New("websocket unavailable")}
+	service := NewServiceWithNotifier(&recordingRepo{}, notifier)
+
+	message, err := service.Send(context.Background(), SendInput{
+		ConversationID:  42,
+		SenderID:        7,
+		ContentMarkdown: "hi",
+	})
+	if err != nil {
+		t.Fatalf("Send returned error: %v", err)
+	}
+	if message.ID != 1 {
+		t.Fatalf("got message ID %d want 1", message.ID)
+	}
+	if !notifier.messageCreatedCalled || notifier.messageCreatedMessageID != 1 {
+		t.Fatalf("message notification not recorded correctly: %#v", notifier)
+	}
+	if notifier.conversationUpdatedID != 42 {
+		t.Fatalf("got conversation update %d want 42", notifier.conversationUpdatedID)
 	}
 }
 

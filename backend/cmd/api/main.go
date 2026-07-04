@@ -15,6 +15,7 @@ import (
 	"vibework-chat/backend/internal/db"
 	"vibework-chat/backend/internal/httpx"
 	"vibework-chat/backend/internal/messages"
+	"vibework-chat/backend/internal/realtime"
 	"vibework-chat/backend/internal/users"
 )
 
@@ -38,10 +39,14 @@ func main() {
 	conversationService := conversations.NewService(conversationRepo)
 	conversationHandler := conversations.NewHandler(conversationService)
 	messageRepo := messages.NewSQLRepository(conn)
-	messageService := messages.NewService(messageRepo)
+	realtimeHub := realtime.NewHub()
+	realtimeHandler := realtime.NewHandler(realtimeHub, cfg)
+	realtimeNotifier := realtime.NewSQLNotifier(conn, realtimeHub)
+	messageService := messages.NewServiceWithNotifier(messageRepo, realtimeNotifier)
 	messageHandler := messages.NewHandler(messageService)
 
 	router := buildRouter(cfg, authHandler.DevLogin, sessionRepo, func(r chi.Router) {
+		r.Get("/api/ws", realtimeHandler.ServeWS)
 		r.Get("/api/users", userHandler.List)
 		r.Get("/api/conversations", conversationHandler.List)
 		r.Post("/api/conversations", conversationHandler.Create)
