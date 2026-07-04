@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"vibework-chat/backend/internal/admin"
 	"vibework-chat/backend/internal/agent"
 	"vibework-chat/backend/internal/auth"
 	"vibework-chat/backend/internal/config"
@@ -49,9 +50,13 @@ func main() {
 	agentOrchestrator := agent.NewOrchestrator(agentFinder, messageService, agentRunner)
 	messageService = messages.NewServiceWithRealtime(messageRepo, realtimeNotifier, agentOrchestrator)
 	messageHandler := messages.NewHandler(messageService)
+	adminHandler := admin.NewHandler(conn)
 
 	router := buildRouter(cfg, authHandler.DevLogin, sessionRepo, func(r chi.Router) {
 		r.Get("/api/ws", realtimeHandler.ServeWS)
+		r.Get("/api/admin/users", adminHandler.Users)
+		r.Get("/api/admin/conversations", adminHandler.Conversations)
+		r.Get("/api/admin/messages", adminHandler.Messages)
 		r.Get("/api/users", userHandler.List)
 		r.Get("/api/conversations", conversationHandler.List)
 		r.Post("/api/conversations", conversationHandler.Create)
