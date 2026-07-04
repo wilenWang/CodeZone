@@ -22,7 +22,7 @@ export function connectEvents(
     if (closed) {
       return;
     }
-    socket = new WebSocket(`${wsUrl(window.location.origin, "/api/ws")}?token=${encodeURIComponent(token)}`);
+    socket = new WebSocket(`${wsUrl(window.location.origin, "/api/ws")}?access_token=${encodeURIComponent(token)}`);
     socket.onopen = () => onStatus(true);
     socket.onclose = () => {
       onStatus(false);

@@ -21,7 +21,7 @@ Web chat MVP with React, Go, and MySQL.
 
    ```bash
    cd backend
-   go run ./cmd/api
+   ENABLE_DEV_LOGIN=true go run ./cmd/api
    ```
 
 4. Start the frontend:
@@ -31,3 +31,30 @@ Web chat MVP with React, Go, and MySQL.
    npm install
    npm run dev
    ```
+
+## Verification
+
+Backend:
+
+```bash
+cd backend
+go test ./...
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run test
+npm run build
+```
+
+End-to-end:
+
+```bash
+docker compose up -d mysql
+cd backend && go run ./cmd/migrate
+cd backend && ENABLE_DEV_LOGIN=true go run ./cmd/api
+cd frontend && npm run dev
+cd frontend && npm run test:e2e
+```
