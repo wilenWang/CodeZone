@@ -16,14 +16,18 @@ func TestPlainTextFromMarkdown(t *testing.T) {
 }
 
 type recordingRepo struct {
-	createErr  error
-	listErr    error
-	listUserID int64
+	createErr   error
+	listErr     error
+	listUserID  int64
+	afterCreate func()
 }
 
 func (r *recordingRepo) Create(ctx context.Context, input SendInput, contentPlain string) (Message, error) {
 	if r.createErr != nil {
 		return Message{}, r.createErr
+	}
+	if r.afterCreate != nil {
+		r.afterCreate()
 	}
 	return Message{
 		ID:              1,
@@ -78,11 +82,13 @@ type recordingNotifier struct {
 	messageCreatedCalled    bool
 	conversationUpdatedID   int64
 	messageCreatedMessageID int64
+	messageCreatedCtxErr    error
 }
 
 func (n *recordingNotifier) MessageCreated(ctx context.Context, message Message) error {
 	n.messageCreatedCalled = true
 	n.messageCreatedMessageID = message.ID
+	n.messageCreatedCtxErr = ctx.Err()
 	return n.err
 }
 
@@ -111,6 +117,27 @@ func TestSendNotifiesAfterSuccessfulCreateAndIgnoresNotifierErrors(t *testing.T)
 	}
 	if notifier.conversationUpdatedID != 42 {
 		t.Fatalf("got conversation update %d want 42", notifier.conversationUpdatedID)
+	}
+}
+
+func TestSendUsesIndependentContextForPostCommitNotifications(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	notifier := &recordingNotifier{}
+	service := NewServiceWithNotifier(&recordingRepo{afterCreate: cancel}, notifier)
+
+	_, err := service.Send(ctx, SendInput{
+		ConversationID:  42,
+		SenderID:        7,
+		ContentMarkdown: "hi",
+	})
+	if err != nil {
+		t.Fatalf("Send returned error: %v", err)
+	}
+	if !notifier.messageCreatedCalled {
+		t.Fatal("message notification was not recorded")
+	}
+	if notifier.messageCreatedCtxErr != nil {
+		t.Fatalf("notification context was canceled: %v", notifier.messageCreatedCtxErr)
 	}
 }
 

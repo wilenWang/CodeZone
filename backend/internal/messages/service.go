@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 )
 
 var ErrEmptyMessage = errors.New("message content is empty")
 var ErrNotFound = errors.New("conversation not found")
+
+const notifyTimeout = 5 * time.Second
 
 type Message struct {
 	ID              int64  `json:"id"`
@@ -57,8 +60,10 @@ func (s *Service) Send(ctx context.Context, input SendInput) (Message, error) {
 		return Message{}, err
 	}
 	if s.notifier != nil {
-		_ = s.notifier.MessageCreated(ctx, message)
-		_ = s.notifier.ConversationUpdated(ctx, message.ConversationID)
+		notifyCtx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
+		defer cancel()
+		_ = s.notifier.MessageCreated(notifyCtx, message)
+		_ = s.notifier.ConversationUpdated(notifyCtx, message.ConversationID)
 	}
 	return message, nil
 }
