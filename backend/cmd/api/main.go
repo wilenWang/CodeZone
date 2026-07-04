@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"vibework-chat/backend/internal/agent"
 	"vibework-chat/backend/internal/auth"
 	"vibework-chat/backend/internal/config"
 	"vibework-chat/backend/internal/conversations"
@@ -42,7 +43,11 @@ func main() {
 	realtimeHub := realtime.NewHub()
 	realtimeHandler := realtime.NewHandler(realtimeHub, cfg)
 	realtimeNotifier := realtime.NewSQLNotifier(conn, realtimeHub)
+	agentFinder := agent.NewSQLFinder(conn)
+	agentRunner := agent.NewMockRunner("Mock Agent received:")
 	messageService := messages.NewServiceWithNotifier(messageRepo, realtimeNotifier)
+	agentOrchestrator := agent.NewOrchestrator(agentFinder, messageService, agentRunner)
+	messageService = messages.NewServiceWithRealtime(messageRepo, realtimeNotifier, agentOrchestrator)
 	messageHandler := messages.NewHandler(messageService)
 
 	router := buildRouter(cfg, authHandler.DevLogin, sessionRepo, func(r chi.Router) {

@@ -141,6 +141,51 @@ func TestSendUsesIndependentContextForPostCommitNotifications(t *testing.T) {
 	}
 }
 
+type recordingAgentResponder struct {
+	called         bool
+	conversationID int64
+	humanMessage   string
+}
+
+func (r *recordingAgentResponder) MaybeReply(ctx context.Context, conversationID int64, humanMessage string) {
+	r.called = true
+	r.conversationID = conversationID
+	r.humanMessage = humanMessage
+}
+
+func TestSendTriggersAgentResponderAfterHumanMessage(t *testing.T) {
+	responder := &recordingAgentResponder{}
+	service := NewServiceWithRealtime(&recordingRepo{}, nil, responder)
+
+	_, err := service.Send(context.Background(), SendInput{
+		ConversationID:  42,
+		SenderID:        7,
+		ContentMarkdown: "hi",
+	})
+	if err != nil {
+		t.Fatalf("Send returned error: %v", err)
+	}
+	if !responder.called {
+		t.Fatal("agent responder was not called")
+	}
+	if responder.conversationID != 42 || responder.humanMessage != "hi" {
+		t.Fatalf("unexpected responder input: %#v", responder)
+	}
+}
+
+func TestSendFromAgentDoesNotTriggerAgentResponder(t *testing.T) {
+	responder := &recordingAgentResponder{}
+	service := NewServiceWithRealtime(&recordingRepo{}, nil, responder)
+
+	err := service.SendFromAgent(context.Background(), 42, 10, "agent reply")
+	if err != nil {
+		t.Fatalf("SendFromAgent returned error: %v", err)
+	}
+	if responder.called {
+		t.Fatal("agent responder should not be called for agent sends")
+	}
+}
+
 type fakeResult struct {
 	rowsAffected int64
 }

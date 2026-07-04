@@ -38,9 +38,14 @@ type Notifier interface {
 	ConversationUpdated(ctx context.Context, conversationID int64) error
 }
 
+type AgentResponder interface {
+	MaybeReply(ctx context.Context, conversationID int64, humanMessage string)
+}
+
 type Service struct {
-	repo     Repository
-	notifier Notifier
+	repo           Repository
+	notifier       Notifier
+	agentResponder AgentResponder
 }
 
 func NewService(repo Repository) *Service {
@@ -49,6 +54,10 @@ func NewService(repo Repository) *Service {
 
 func NewServiceWithNotifier(repo Repository, notifier Notifier) *Service {
 	return &Service{repo: repo, notifier: notifier}
+}
+
+func NewServiceWithRealtime(repo Repository, notifier Notifier, agentResponder AgentResponder) *Service {
+	return &Service{repo: repo, notifier: notifier, agentResponder: agentResponder}
 }
 
 func (s *Service) Send(ctx context.Context, input SendInput) (Message, error) {
@@ -65,7 +74,28 @@ func (s *Service) Send(ctx context.Context, input SendInput) (Message, error) {
 		_ = s.notifier.MessageCreated(notifyCtx, message)
 		_ = s.notifier.ConversationUpdated(notifyCtx, message.ConversationID)
 	}
+	if s.agentResponder != nil {
+		s.agentResponder.MaybeReply(ctx, message.ConversationID, message.ContentMarkdown)
+	}
 	return message, nil
+}
+
+func (s *Service) SendFromAgent(ctx context.Context, conversationID int64, agentUserID int64, contentMarkdown string) error {
+	message, err := s.repo.Create(ctx, SendInput{
+		ConversationID:  conversationID,
+		SenderID:        agentUserID,
+		ContentMarkdown: contentMarkdown,
+	}, PlainTextFromMarkdown(contentMarkdown))
+	if err != nil {
+		return err
+	}
+	if s.notifier != nil {
+		notifyCtx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
+		defer cancel()
+		_ = s.notifier.MessageCreated(notifyCtx, message)
+		_ = s.notifier.ConversationUpdated(notifyCtx, message.ConversationID)
+	}
+	return nil
 }
 
 func (s *Service) ListBefore(ctx context.Context, conversationID int64, userID int64, beforeID int64, limit int) ([]Message, error) {
