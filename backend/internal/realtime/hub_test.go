@@ -52,7 +52,7 @@ func TestSendToUserDoesNotBlockWhenSubscriptionHasPendingEvents(t *testing.T) {
 	}
 }
 
-func TestSendToUserDisconnectsSubscriptionWhenBacklogIsFull(t *testing.T) {
+func TestSendToUserDisconnectsSubscriptionImmediatelyWhenBacklogIsFull(t *testing.T) {
 	hub := NewHub()
 	subscription := hub.Register(42)
 
@@ -63,15 +63,6 @@ func TestSendToUserDisconnectsSubscriptionWhenBacklogIsFull(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	for i := 0; i < maxSubscriptionBacklog; i++ {
-		event, ok := subscription.Next(ctx)
-		if !ok {
-			t.Fatalf("subscription closed before draining backlog at %d", i)
-		}
-		if event.Payload != i {
-			t.Fatalf("got payload %#v want %d", event.Payload, i)
-		}
-	}
 	if event, ok := subscription.Next(ctx); ok {
 		t.Fatalf("got event after backlog disconnect: %#v", event)
 	}

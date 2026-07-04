@@ -69,16 +69,16 @@ func (h *Hub) SendToUser(userID int64, event Event) {
 func (s *Subscription) Next(ctx context.Context) (Event, bool) {
 	for {
 		s.mu.Lock()
+		if s.closed {
+			s.mu.Unlock()
+			return Event{}, false
+		}
 		if len(s.queue) > 0 {
 			event := s.queue[0]
 			copy(s.queue, s.queue[1:])
 			s.queue = s.queue[:len(s.queue)-1]
 			s.mu.Unlock()
 			return event, true
-		}
-		if s.closed {
-			s.mu.Unlock()
-			return Event{}, false
 		}
 		notify := s.notify
 		s.mu.Unlock()
@@ -117,6 +117,7 @@ func (s *Subscription) close() {
 		return
 	}
 	s.closed = true
+	s.queue = nil
 	select {
 	case s.notify <- struct{}{}:
 	default:
