@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   listConversations,
   listMessages,
@@ -8,6 +8,7 @@ import {
   type Message,
   type User,
 } from "../../lib/api";
+import { connectEvents } from "../../lib/ws";
 import { ConversationList } from "./ConversationList";
 import { MessageComposer } from "./MessageComposer";
 import { MessageList } from "./MessageList";
@@ -20,6 +21,8 @@ type Props = {
 export function ChatPage({ token, user }: Props) {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [failedMessages, setFailedMessages] = useState<{ id: string; contentMarkdown: string }[]>([]);
   const conversations = useQuery({
     queryKey: ["conversations"],
     queryFn: () => listConversations(token),
@@ -38,10 +41,41 @@ export function ChatPage({ token, user }: Props) {
       }));
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
+    onError: (_error, text) => {
+      setFailedMessages((items) => [...items, { id: crypto.randomUUID(), contentMarkdown: text }]);
+    },
   });
   const activeConversation = (conversations.data?.conversations ?? []).find(
     (item: Conversation) => item.id === activeId,
   );
+
+  useEffect(() => {
+    return connectEvents(
+      token,
+      (event) => {
+        if (event.type === "message.created") {
+          void queryClient.invalidateQueries({ queryKey: ["messages"] });
+        }
+        if (event.type === "conversation.updated") {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        }
+      },
+      (nextConnected) => {
+        setConnected(nextConnected);
+        if (nextConnected) {
+          void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          if (activeId) {
+            void queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+          }
+        }
+      },
+    );
+  }, [token, queryClient, activeId]);
+
+  function retryFailedMessage(id: string, contentMarkdown: string) {
+    setFailedMessages((items) => items.filter((item) => item.id !== id));
+    send.mutate(contentMarkdown);
+  }
 
   return (
     <main className="chat-layout">
@@ -53,8 +87,18 @@ export function ChatPage({ token, user }: Props) {
       <section className="chat-panel">
         {activeId ? (
           <>
-            <header className="chat-header">{activeConversation?.title ?? `Conversation ${activeId}`}</header>
-            <MessageList currentUserId={user.id} messages={messages.data?.messages ?? []} />
+            <header className="chat-header">
+              <span>{activeConversation?.title ?? `Conversation ${activeId}`}</span>
+              <span className={connected ? "ws-status connected" : "ws-status"}>
+                {connected ? "Live" : "Reconnecting"}
+              </span>
+            </header>
+            <MessageList
+              currentUserId={user.id}
+              failedMessages={failedMessages}
+              messages={messages.data?.messages ?? []}
+              onRetry={retryFailedMessage}
+            />
             <MessageComposer disabled={send.isPending} onSend={(text) => send.mutate(text)} />
           </>
         ) : (

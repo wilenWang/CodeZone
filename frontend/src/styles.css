@@ -105,10 +105,22 @@ button {
 .chat-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0 18px;
   border-bottom: 1px solid #d7e0e3;
   background: #ffffff;
   font-weight: 700;
+}
+
+.ws-status {
+  color: #8a4b00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ws-status.connected {
+  color: #0f766e;
 }
 
 .message-list {
@@ -127,6 +139,25 @@ button {
 .message.mine {
   margin-left: auto;
   background: #cce7ff;
+}
+
+.message.failed {
+  border: 1px solid #f3b4ad;
+  background: #fff4f2;
+}
+
+.message-failed-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.message-failed-actions button {
+  min-height: 32px;
+  background: #b42318;
 }
 
 .composer {
