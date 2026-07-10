@@ -3,6 +3,12 @@ import { devLogin, type User } from "../../lib/api";
 
 const seedUsers = ["alice", "bob", "carol"];
 
+const avatarColors: Record<string, string> = {
+  alice: "#e4e4e7",
+  bob: "#d4d4d8",
+  carol: "#e4e4e7",
+};
+
 type Props = {
   onLogin: (token: string, user: User) => void;
 };
@@ -10,14 +16,20 @@ type Props = {
 export function LoginPage({ onLogin }: Props) {
   const [username, setUsername] = useState("alice");
   const [error, setError] = useState<string | null>(null);
+  const [inputError, setInputError] = useState(false);
+  const [loadingSeed, setLoadingSeed] = useState<string | null>(null);
 
   async function loginAs(name: string) {
     setError(null);
+    setInputError(false);
+    setLoadingSeed(name);
     try {
       const result = await devLogin(name);
       onLogin(result.token, result.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoadingSeed(null);
     }
   }
 
@@ -25,23 +37,63 @@ export function LoginPage({ onLogin }: Props) {
     <main className="login-page">
       <section className="login-panel">
         <h1>Vibework Chat</h1>
-        <div className="seed-list">
+        <div className="seed-list" role="list">
           {seedUsers.map((name) => (
-            <button key={name} onClick={() => void loginAs(name)}>
-              Continue as {name}
-            </button>
+            <div key={name} role="listitem">
+              <button
+                className="seed-button"
+                disabled={loadingSeed !== null}
+                onClick={() => void loginAs(name)}
+                type="button"
+              >
+                <span
+                  className="seed-avatar"
+                  style={{ background: avatarColors[name] ?? "#e4e4e7" }}
+                  aria-hidden="true"
+                >
+                  {name[0]?.toUpperCase()}
+                </span>
+                <span>Continue as {name}</span>
+                {loadingSeed === name ? <span className="spinner" aria-hidden="true" /> : null}
+              </button>
+            </div>
           ))}
         </div>
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void loginAs(username);
+            const trimmed = username.trim();
+            if (!trimmed) {
+              setInputError(true);
+              return;
+            }
+            void loginAs(trimmed);
           }}
         >
-          <input value={username} onChange={(event) => setUsername(event.target.value)} />
-          <button type="submit">Login</button>
+          <label className="field-label">
+            Username
+            <input
+              className={inputError ? "text-input text-input--error" : "text-input"}
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setInputError(false);
+              }}
+              aria-invalid={inputError}
+              aria-describedby={inputError ? "username-error" : undefined}
+            />
+            {inputError ? (
+              <p id="username-error" className="error-text">
+                Please enter a username
+              </p>
+            ) : null}
+          </label>
+          <button className="primary-button" type="submit" disabled={loadingSeed !== null}>
+            {loadingSeed === username.trim() ? <span className="spinner" aria-hidden="true" /> : null}
+            Login
+          </button>
         </form>
-        {error ? <p className="error-text">{error}</p> : null}
+        {error ? <div className="error-banner" role="alert">{error}</div> : null}
       </section>
     </main>
   );
