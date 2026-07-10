@@ -46,4 +46,35 @@ describe("ConversationList", () => {
     expect(selected).not.toBeNull();
     expect(selected?.textContent).toContain("Direct with Bob");
   });
+
+  it("shows loading skeletons", () => {
+    const { container } = render(
+      <ConversationList conversations={[]} selectedId={null} onSelect={() => {}} isLoading />,
+    );
+    expect(container.querySelectorAll(".skeleton").length).toBeGreaterThan(0);
+  });
+
+  it("shows empty state when there are no conversations", () => {
+    const { container } = render(
+      <ConversationList conversations={[]} selectedId={null} onSelect={() => {}} />,
+    );
+    expect(container.textContent).toContain("No conversations yet");
+  });
+
+  it("shows error state with retry", () => {
+    const onRetry = vi.fn();
+    const { container } = render(
+      <ConversationList
+        conversations={[]}
+        selectedId={null}
+        onSelect={() => {}}
+        error={new Error("fail")}
+        onRetry={onRetry}
+      />,
+    );
+    expect(container.textContent).toContain("Could not load conversations");
+    const retryButton = container.querySelector("button");
+    fireEvent.click(retryButton!);
+    expect(onRetry).toHaveBeenCalled();
+  });
 });

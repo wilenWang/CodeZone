@@ -14,8 +14,15 @@ function formatTime(dateString: string): string {
 }
 
 export function MessageList({ currentUserId, messages, failedMessages, onRetry }: Props) {
+  const hasContent = messages.length > 0 || failedMessages.length > 0;
+
   return (
     <div className="message-list" role="log" aria-live="polite" aria-label="Messages">
+      {!hasContent ? (
+        <div className="empty-state">
+          <p className="empty-state-hint">No messages yet. Send the first one.</p>
+        </div>
+      ) : null}
       {[...messages].reverse().map((message) => {
         const isMine = message.senderId === currentUserId;
         return (
