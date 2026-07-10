@@ -4,9 +4,9 @@
 
 **Goal:** Apply the approved frontend design spec to upgrade the existing React + Vite chat interface with a cohesive token system, Geist typography, full UI states, and polished micro-interactions without migrating frameworks.
 
-**Architecture:** Keep the existing vanilla CSS + React stack. Centralize design tokens in `frontend/src/styles.css`. Update each page/component to consume the tokens and implement the required states (loading, empty, error, hover, active, focus). Add minimal dependency `geist` for typography.
+**Architecture:** Keep the existing vanilla CSS + React stack. Centralize design tokens in `frontend/src/styles.css`. Update each page/component to consume the tokens and implement the required states (loading, empty, error, hover, active, focus). Add minimal font dependencies `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` for typography.
 
-**Tech Stack:** React, Vite, TypeScript, vanilla CSS, TanStack Query, `geist` font package, Vitest, React Testing Library.
+**Tech Stack:** React, Vite, TypeScript, vanilla CSS, TanStack Query, `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` font packages, Vitest, React Testing Library.
 
 ---
 
@@ -16,7 +16,7 @@ Files to create: none.
 
 Files to modify:
 
-- `frontend/package.json` — add `geist` dependency.
+- `frontend/package.json` — add `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` dependencies.
 - `frontend/package-lock.json` — updated by npm install.
 - `frontend/index.html` — preload Geist fonts, add meta tags.
 - `frontend/src/main.tsx` — import Geist font CSS.
@@ -41,11 +41,11 @@ Files to modify:
 - Modify: `frontend/index.html`
 - Modify: `frontend/src/main.tsx`
 
-- [ ] **Step 1: Install the `geist` package**
+- [ ] **Step 1: Install the `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` packages**
 
 Run:
 ```bash
-cd frontend && npm install geist
+cd frontend && npm install @fontsource-variable/geist @fontsource-variable/geist-mono
 ```
 
 Expected: `package.json` and `package-lock.json` are updated. No errors.
@@ -55,8 +55,8 @@ Expected: `package.json` and `package-lock.json` are updated. No errors.
 Modify `frontend/src/main.tsx` to import the font CSS at the top:
 
 ```tsx
-import "geist/font/sans";
-import "geist/font/mono";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./app/App";
@@ -93,7 +93,7 @@ Modify `frontend/index.html`:
 </html>
 ```
 
-Note: `geist` is imported via CSS in `main.tsx`; the preconnect is optional but keeps the head tidy.
+Note: `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` are imported via CSS in `main.tsx`; the preconnect is optional but keeps the head tidy.
 
 - [ ] **Step 4: Verify build still compiles**
 

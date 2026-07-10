@@ -39,24 +39,24 @@ export function LoginPage({ onLogin }: Props) {
         <h1>Vibework Chat</h1>
         <div className="seed-list" role="list">
           {seedUsers.map((name) => (
-            <button
-              key={name}
-              className="seed-button"
-              disabled={loadingSeed !== null}
-              onClick={() => void loginAs(name)}
-              role="listitem"
-              type="button"
-            >
-              <span
-                className="seed-avatar"
-                style={{ background: avatarColors[name] ?? "#e4e4e7" }}
-                aria-hidden="true"
+            <div key={name} role="listitem">
+              <button
+                className="seed-button"
+                disabled={loadingSeed !== null}
+                onClick={() => void loginAs(name)}
+                type="button"
               >
-                {name[0]?.toUpperCase()}
-              </span>
-              <span>Continue as {name}</span>
-              {loadingSeed === name ? <span className="spinner" aria-hidden="true" /> : null}
-            </button>
+                <span
+                  className="seed-avatar"
+                  style={{ background: avatarColors[name] ?? "#e4e4e7" }}
+                  aria-hidden="true"
+                >
+                  {name[0]?.toUpperCase()}
+                </span>
+                <span>Continue as {name}</span>
+                {loadingSeed === name ? <span className="spinner" aria-hidden="true" /> : null}
+              </button>
+            </div>
           ))}
         </div>
         <form
@@ -89,11 +89,11 @@ export function LoginPage({ onLogin }: Props) {
             ) : null}
           </label>
           <button className="primary-button" type="submit" disabled={loadingSeed !== null}>
-            {loadingSeed === username ? <span className="spinner" aria-hidden="true" /> : null}
+            {loadingSeed === username.trim() ? <span className="spinner" aria-hidden="true" /> : null}
             Login
           </button>
         </form>
-        {error ? <div className="error-banner">{error}</div> : null}
+        {error ? <div className="error-banner" role="alert">{error}</div> : null}
       </section>
     </main>
   );

@@ -19,7 +19,7 @@ The work is scoped to the `frontend/` directory. It preserves all existing funct
 
 - Make the app feel intentional and finished.
 - Keep the existing vanilla CSS + React stack; no Tailwind or Framer Motion migration.
-- Add only one low-risk dependency: the `geist` font package.
+- Add low-risk font packages: `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`.
 - Improve accessibility with visible focus rings and semantic markup.
 - Ensure all interactive elements have clear feedback cycles.
 
@@ -254,10 +254,10 @@ transition: color 0.2s var(--ease-out),
 Add:
 
 ```bash
-cd frontend && npm install geist
+cd frontend && npm install @fontsource-variable/geist @fontsource-variable/geist-mono
 ```
 
-No other new runtime dependencies. This is a font-only package and does not change the build pipeline.
+No other new runtime dependencies. These are font-only packages and do not change the build pipeline.
 
 ## Files Likely to Change
 

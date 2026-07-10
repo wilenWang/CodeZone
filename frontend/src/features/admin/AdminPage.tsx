@@ -15,38 +15,75 @@ export function AdminPage({ token }: Props) {
 
   return (
     <main className="admin-page">
-      <h1>Admin</h1>
-      <AdminTable title="Users" rows={users.data?.users ?? []} />
-      <AdminTable title="Conversations" rows={conversations.data?.conversations ?? []} />
-      <AdminTable title="Recent Messages" rows={messages.data?.messages ?? []} />
+      <div className="admin-page-inner">
+        <h1>Admin</h1>
+        <AdminTable title="Users" rows={users.data?.users ?? []} isLoading={users.isLoading} />
+        <AdminTable
+          title="Conversations"
+          rows={conversations.data?.conversations ?? []}
+          isLoading={conversations.isLoading}
+        />
+        <AdminTable
+          title="Recent Messages"
+          rows={messages.data?.messages ?? []}
+          isLoading={messages.isLoading}
+        />
+      </div>
     </main>
   );
 }
 
-function AdminTable({ title, rows }: { title: string; rows: Record<string, unknown>[] }) {
+function AdminTable({
+  title,
+  rows,
+  isLoading,
+}: {
+  title: string;
+  rows: Record<string, unknown>[];
+  isLoading: boolean;
+}) {
   const columns = Object.keys(rows[0] ?? {});
 
   return (
     <section className="admin-section">
       <h2>{title}</h2>
-      <table>
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
-              {columns.map((column) => (
-                <td key={column}>{String(row[column] ?? "")}</td>
+      <div className="admin-table-wrap">
+        {isLoading ? (
+          <div className="loading-state" aria-label={`Loading ${title.toLowerCase()}`}>
+            <div className="skeleton" style={{ height: 40 }} />
+            <div className="skeleton" style={{ height: 40 }} />
+            <div className="skeleton" style={{ height: 40 }} />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="empty-state">
+            <p className="empty-state-hint">No {title.toLowerCase()} found</p>
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={index}>
+                  {columns.map((column) => (
+                    <td
+                      key={column}
+                      className={typeof row[column] === "number" ? "tabular-nums" : ""}
+                    >
+                      {String(row[column] ?? "")}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+        )}
+      </div>
     </section>
   );
 }
