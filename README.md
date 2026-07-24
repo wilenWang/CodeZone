@@ -1,4 +1,4 @@
-# Vibework Chat
+# CodeZone
 
 Web chat MVP with React, Go, and MySQL.
 

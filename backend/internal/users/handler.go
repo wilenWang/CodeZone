@@ -3,7 +3,7 @@ package users
 import (
 	"net/http"
 
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/httpx"
 )
 
 type Handler struct {

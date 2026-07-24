@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"vibework-chat/backend/internal/config"
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/config"
+	"codezone/backend/internal/httpx"
 )
 
 func TestIsAllowedOrigin(t *testing.T) {

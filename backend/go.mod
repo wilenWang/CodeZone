@@ -1,4 +1,4 @@
-module vibework-chat/backend
+module codezone/backend
 
 go 1.23
 

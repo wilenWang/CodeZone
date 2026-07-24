@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/httpx"
 )
 
 type Handler struct {

@@ -4,8 +4,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"vibework-chat/backend/internal/config"
-	"vibework-chat/backend/internal/db"
+	"codezone/backend/internal/config"
+	"codezone/backend/internal/db"
 )
 
 func main() {

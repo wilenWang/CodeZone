@@ -36,7 +36,7 @@ export function LoginPage({ onLogin }: Props) {
   return (
     <main className="login-page">
       <section className="login-panel">
-        <h1>Vibework Chat</h1>
+        <h1>CodeZone</h1>
         <div className="seed-list" role="list">
           {seedUsers.map((name) => (
             <div key={name} role="listitem">

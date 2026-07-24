@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"vibework-chat/backend/internal/db"
+	"codezone/backend/internal/db"
 )
 
 func TestSQLRepositoryIntegrationAuthorization(t *testing.T) {

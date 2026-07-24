@@ -9,16 +9,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"vibework-chat/backend/internal/admin"
-	"vibework-chat/backend/internal/agent"
-	"vibework-chat/backend/internal/auth"
-	"vibework-chat/backend/internal/config"
-	"vibework-chat/backend/internal/conversations"
-	"vibework-chat/backend/internal/db"
-	"vibework-chat/backend/internal/httpx"
-	"vibework-chat/backend/internal/messages"
-	"vibework-chat/backend/internal/realtime"
-	"vibework-chat/backend/internal/users"
+	"codezone/backend/internal/admin"
+	"codezone/backend/internal/agent"
+	"codezone/backend/internal/auth"
+	"codezone/backend/internal/config"
+	"codezone/backend/internal/conversations"
+	"codezone/backend/internal/db"
+	"codezone/backend/internal/httpx"
+	"codezone/backend/internal/messages"
+	"codezone/backend/internal/realtime"
+	"codezone/backend/internal/users"
 )
 
 func main() {

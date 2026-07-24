@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/httpx"
 )
 
 type SessionRepository struct {

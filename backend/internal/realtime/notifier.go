@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"vibework-chat/backend/internal/messages"
+	"codezone/backend/internal/messages"
 )
 
 type SQLNotifier struct {

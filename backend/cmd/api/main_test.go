@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"vibework-chat/backend/internal/auth"
-	"vibework-chat/backend/internal/config"
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/auth"
+	"codezone/backend/internal/config"
+	"codezone/backend/internal/httpx"
 )
 
 type fakeSessionLookup struct {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/httpx"
 )
 
 type Handler struct {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"vibework-chat/backend/internal/httpx"
+	"codezone/backend/internal/httpx"
 )
 
 func TestCreateMapsValidationErrorsToBadRequest(t *testing.T) {
