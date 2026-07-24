@@ -72,6 +72,10 @@ export function sendMessage(token: string, conversationId: number, contentMarkdo
   return apiPost(`/api/conversations/${conversationId}/messages`, token, { contentMarkdown });
 }
 
+export function markRead(token: string, conversationId: number): Promise<{ ok: boolean }> {
+  return apiPost(`/api/conversations/${conversationId}/read`, token, {});
+}
+
 export function adminUsers(token: string): Promise<{ users: AdminRow[] }> {
   return apiGet("/api/admin/users", token);
 }

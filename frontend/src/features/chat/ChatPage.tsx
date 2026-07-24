@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   listConversations,
   listMessages,
+  markRead,
   sendMessage,
   type Conversation,
   type Message,
@@ -56,6 +57,19 @@ export function ChatPage({ token, user }: Props) {
   const activeConversation = (conversations.data?.conversations ?? []).find(
     (item: Conversation) => item.id === activeId,
   );
+
+  const markReadMutation = useMutation({
+    mutationFn: (conversationId: number) => markRead(token, conversationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+
+  useEffect(() => {
+    if (activeId && activeConversation && activeConversation.unreadCount > 0) {
+      markReadMutation.mutate(activeId);
+    }
+  }, [activeId, activeConversation?.unreadCount, markReadMutation]);
 
   useEffect(() => {
     return connectEvents(
