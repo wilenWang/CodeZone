@@ -5,3 +5,49 @@ frontend/node_modules/
 frontend/playwright-report/
 frontend/test-results/
 frontend/tsconfig.tsbuildinfo
+
+# Local env / secrets
+backend/config.yaml
+backend/config.*.yaml
+!backend/config.local.yaml
+!backend/config.test.yaml
+!backend/config.gray.yaml
+!backend/config.prod.yaml
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Claude Code local settings (keep shared settings.json if any)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Go build & test artifacts
+backend/bin/
+backend/tmp/
+backend/lib/
+backend/api
+backend/migrate
+backend/cmd/api/api
+backend/cmd/migrate/migrate
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Frontend extras
+frontend/coverage/
+frontend/.vite/
+frontend/*.local
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Logs
+*.log
