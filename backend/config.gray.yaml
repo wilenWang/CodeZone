@@ -1,0 +1,12 @@
+# Gray / canary release configuration.
+# Use with: CODEZONE_CONFIG=config.gray.yaml ./api
+#
+# Gray traffic runs against production-grade infrastructure but on a canary
+# instance. Do NOT enable dev seed or dev login here.
+
+port: "8080"
+mysql_dsn: "chat:REPLACE_ME@tcp(mysql-gray.internal:3306)/chat?parseTime=true&multiStatements=true"
+session_secret: "REPLACE_ME_GRAY_SESSION_SECRET"
+cors_origin: "https://gray.codezone.example.com"
+dev_seed: false
+enable_dev_login: false

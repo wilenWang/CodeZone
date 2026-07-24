@@ -22,7 +22,10 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	conn, err := db.Open(cfg.MySQLDSN)
 	if err != nil {

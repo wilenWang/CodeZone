@@ -1,30 +1,64 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+
+	"go.yaml.in/yaml/v4"
+)
 
 type Config struct {
-	Port           string
-	MySQLDSN       string
-	SessionSecret  string
-	CORSOrigin     string
-	DevSeed        bool
-	EnableDevLogin bool
+	Port           string `yaml:"port"`
+	MySQLDSN       string `yaml:"mysql_dsn"`
+	SessionSecret  string `yaml:"session_secret"`
+	CORSOrigin     string `yaml:"cors_origin"`
+	DevSeed        bool   `yaml:"dev_seed"`
+	EnableDevLogin bool   `yaml:"enable_dev_login"`
 }
 
-func Load() Config {
-	return Config{
-		Port:           env("PORT", "8080"),
-		MySQLDSN:       env("MYSQL_DSN", "chat:chat@tcp(127.0.0.1:3306)/chat?parseTime=true&multiStatements=true"),
-		SessionSecret:  env("SESSION_SECRET", "dev-session-secret-change-me"),
-		CORSOrigin:     env("CORS_ORIGIN", "http://localhost:5173"),
-		DevSeed:        env("DEV_SEED", "true") == "true",
-		EnableDevLogin: env("ENABLE_DEV_LOGIN", "false") == "true",
+const defaultPath = "config.yaml"
+
+// Load reads the YAML config file. Path resolution order:
+//  1. CODEZONE_CONFIG env var, if set
+//  2. ./config.yaml relative to the process working directory
+//
+// The file is required — there is no in-code default set. Missing or invalid
+// files cause the caller to fail fast.
+func Load() (Config, error) {
+	path := os.Getenv("CODEZONE_CONFIG")
+	if path == "" {
+		path = defaultPath
 	}
+	return LoadFrom(path)
 }
 
-func env(key string, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+func LoadFrom(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, fmt.Errorf("config: read %s: %w", path, err)
 	}
-	return fallback
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return Config{}, fmt.Errorf("config: parse %s: %w", path, err)
+	}
+	if err := cfg.validate(); err != nil {
+		return Config{}, fmt.Errorf("config: %s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+func (c Config) validate() error {
+	if c.Port == "" {
+		return fmt.Errorf("port is required")
+	}
+	if c.MySQLDSN == "" {
+		return fmt.Errorf("mysql_dsn is required")
+	}
+	if c.SessionSecret == "" {
+		return fmt.Errorf("session_secret is required")
+	}
+	if c.CORSOrigin == "" {
+		return fmt.Errorf("cors_origin is required")
+	}
+	return nil
 }

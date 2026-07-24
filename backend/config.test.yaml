@@ -1,0 +1,12 @@
+# Test / staging environment configuration.
+# Use with: CODEZONE_CONFIG=config.test.yaml ./api
+#
+# Replace host/user/password/secret before deploying. Values shown here are
+# placeholders that must be overridden by the deployment pipeline.
+
+port: "8080"
+mysql_dsn: "chat:REPLACE_ME@tcp(mysql-test.internal:3306)/chat?parseTime=true&multiStatements=true"
+session_secret: "REPLACE_ME_TEST_SESSION_SECRET"
+cors_origin: "https://test.codezone.example.com"
+dev_seed: false
+enable_dev_login: true

@@ -1,0 +1,10 @@
+# Local development configuration.
+# Use with: go run ./cmd/api  (default path is ./config.yaml — either rename
+# this file, or run with CODEZONE_CONFIG=config.local.yaml).
+
+port: "8080"
+mysql_dsn: "chat:chat@tcp(127.0.0.1:3306)/chat?parseTime=true&multiStatements=true"
+session_secret: "dev-session-secret-change-me"
+cors_origin: "http://localhost:5173"
+dev_seed: true
+enable_dev_login: true
