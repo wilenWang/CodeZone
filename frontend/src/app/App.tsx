@@ -16,7 +16,7 @@ export function App() {
       {token && user && path === "/admin" ? (
         <AdminPage token={token} />
       ) : token && user ? (
-        <ChatPage token={token} user={user} />
+        <ChatPage token={token} user={user} onUserChange={setUser} />
       ) : (
         <LoginPage
           onLogin={(nextToken, nextUser) => {

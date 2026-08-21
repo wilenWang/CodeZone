@@ -18,6 +18,7 @@ import (
 	"codezone/backend/internal/httpx"
 	"codezone/backend/internal/messages"
 	"codezone/backend/internal/realtime"
+	"codezone/backend/internal/storage"
 	"codezone/backend/internal/users"
 )
 
@@ -39,7 +40,11 @@ func main() {
 	authService := auth.NewService(authUserFinder{repo: userRepo}, sessionRepo, cfg.SessionSecret, 1)
 
 	authHandler := auth.NewHandler(authService)
-	userHandler := users.NewHandler(userService)
+	avatarStorage, err := storage.NewOSS(cfg.OSS)
+	if err != nil {
+		log.Printf("avatar storage unavailable: %v", err)
+	}
+	userHandler := users.NewHandler(userService, cfg.OSS.PathPrefix)
 	conversationRepo := conversations.NewSQLRepository(conn)
 	conversationService := conversations.NewService(conversationRepo)
 	conversationHandler := conversations.NewHandler(conversationService)
@@ -61,7 +66,10 @@ func main() {
 		r.Get("/api/admin/conversations", adminHandler.Conversations)
 		r.Get("/api/admin/messages", adminHandler.Messages)
 		r.Get("/api/users", userHandler.List)
+		r.Patch("/api/me", userHandler.UpdateMe)
+		r.Post("/api/me/avatar", userHandler.UploadAvatar(avatarStorage))
 		r.Get("/api/conversations", conversationHandler.List)
+		r.Post("/api/conversations/direct", conversationHandler.EnsureDirect)
 		r.Post("/api/conversations", conversationHandler.Create)
 		r.Get("/api/conversations/{id}/messages", messageHandler.ListMessages)
 		r.Post("/api/conversations/{id}/messages", messageHandler.SendMessage)

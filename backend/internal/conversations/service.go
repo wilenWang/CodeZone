@@ -3,6 +3,7 @@ package conversations
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 var ErrGroupNeedsThreeMembers = errors.New("group conversations need at least three members")
@@ -10,6 +11,7 @@ var ErrInvalidConversationType = errors.New("conversation type must be direct or
 var ErrInvalidMemberID = errors.New("member ids must be positive")
 var ErrDirectNeedsTwoMembers = errors.New("direct conversations need exactly two members")
 var ErrMembersOutsideWorkspace = errors.New("all members must belong to the workspace")
+var ErrDirectSelf = errors.New("direct conversation requires a different user")
 
 type Conversation struct {
 	ID            int64   `json:"id"`
@@ -33,6 +35,7 @@ type Repository interface {
 	Create(ctx context.Context, input CreateConversationInput) (Conversation, error)
 	ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error)
 	CountUsersInWorkspace(ctx context.Context, workspaceID int64, memberIDs []int64) (int, error)
+	EnsureDirect(ctx context.Context, workspaceID int64, createdBy int64, memberIDs []int64, pairKey string) (Conversation, error)
 }
 
 type Service struct {
@@ -76,6 +79,29 @@ func (s *Service) ListForUser(ctx context.Context, workspaceID int64, userID int
 	return s.repo.ListForUser(ctx, workspaceID, userID)
 }
 
+func (s *Service) EnsureDirect(ctx context.Context, workspaceID int64, userID int64, targetUserID int64) (Conversation, error) {
+	if userID <= 0 || targetUserID <= 0 {
+		return Conversation{}, ErrInvalidMemberID
+	}
+	if userID == targetUserID {
+		return Conversation{}, ErrDirectSelf
+	}
+	createdBy := userID
+	memberIDs := []int64{userID, targetUserID}
+	count, err := s.repo.CountUsersInWorkspace(ctx, workspaceID, memberIDs)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if count != len(memberIDs) {
+		return Conversation{}, ErrMembersOutsideWorkspace
+	}
+	if userID > targetUserID {
+		userID, targetUserID = targetUserID, userID
+	}
+	pairKey := fmt.Sprintf("%d:%d", userID, targetUserID)
+	return s.repo.EnsureDirect(ctx, workspaceID, createdBy, memberIDs, pairKey)
+}
+
 func uniqueMemberIDs(createdBy int64, memberIDs []int64) ([]int64, error) {
 	if createdBy <= 0 {
 		return nil, ErrInvalidMemberID
@@ -101,5 +127,6 @@ func isValidationError(err error) bool {
 		errors.Is(err, ErrInvalidMemberID) ||
 		errors.Is(err, ErrDirectNeedsTwoMembers) ||
 		errors.Is(err, ErrGroupNeedsThreeMembers) ||
-		errors.Is(err, ErrMembersOutsideWorkspace)
+		errors.Is(err, ErrMembersOutsideWorkspace) ||
+		errors.Is(err, ErrDirectSelf)
 }

@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { User } from "../../lib/api";
 import { ChatPage } from "./ChatPage";
 
-const user: User = { id: 1, username: "alice", displayName: "Alice", userType: "human" };
+const user: User = { id: 1, username: "alice", displayName: "Alice", avatarUrl: null, userType: "human" };
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -35,7 +35,7 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ChatPage token="test-token" user={user} />
+      <ChatPage token="test-token" user={user} onUserChange={() => {}} />
     </QueryClientProvider>,
   );
 }
@@ -62,6 +62,12 @@ describe("ChatPage", () => {
     });
     mocks.listMessages.mockResolvedValue({ messages: [] });
     mocks.markRead.mockResolvedValue({ ok: true });
+  });
+
+  it("shows the current user's display name and username", async () => {
+    renderPage();
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("@alice")).toBeTruthy();
   });
 
   it("marks an active conversation read when it has unread messages", async () => {

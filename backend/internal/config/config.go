@@ -14,6 +14,16 @@ type Config struct {
 	CORSOrigin     string `yaml:"cors_origin"`
 	DevSeed        bool   `yaml:"dev_seed"`
 	EnableDevLogin bool   `yaml:"enable_dev_login"`
+	OSS            OSS    `yaml:"oss"`
+}
+
+type OSS struct {
+	Endpoint        string `yaml:"end_point"`
+	AccessKeyID     string `yaml:"access_key_ID"`
+	AccessKeySecret string `yaml:"access_key_secret"`
+	BucketName      string `yaml:"bucket_name"`
+	URL             string `yaml:"oss_url"`
+	PathPrefix      string `yaml:"path_prefix"`
 }
 
 const defaultPath = "config.yaml"

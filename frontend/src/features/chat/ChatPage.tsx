@@ -1,9 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
+  createConversation,
+  ensureDirectConversation,
   listConversations,
   listMessages,
+  listUsers,
   markRead,
+  updateProfile,
+  uploadAvatar,
   sendMessage,
   type Conversation,
   type Message,
@@ -11,20 +16,26 @@ import {
 } from "../../lib/api";
 import { connectEvents } from "../../lib/ws";
 import { ConversationList } from "./ConversationList";
+import { CreateGroupDialog } from "./CreateGroupDialog";
+import { ProfileDrawer } from "./ProfileDrawer";
 import { MessageComposer } from "./MessageComposer";
 import { MessageList } from "./MessageList";
 
 type Props = {
   token: string;
   user: User;
+  onUserChange: (user: User) => void;
 };
 
-export function ChatPage({ token, user }: Props) {
+export function ChatPage({ token, user, onUserChange }: Props) {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [connected, setConnected] = useState(false);
   const [failedMessages, setFailedMessages] = useState<{ id: string; contentMarkdown: string }[]>([]);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [directUserId, setDirectUserId] = useState<number | null>(null);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const activeIdRef = useRef<number | null>(null);
 
   const conversations = useQuery({
@@ -32,7 +43,12 @@ export function ChatPage({ token, user }: Props) {
     queryFn: () => listConversations(token),
   });
 
-  const activeId = selectedId ?? conversations.data?.conversations[0]?.id ?? null;
+  const users = useQuery({
+    queryKey: ["users"],
+    queryFn: () => listUsers(token),
+  });
+
+  const activeId = selectedId ?? conversations.data?.conversations.find((item) => item.type === "group")?.id ?? null;
   activeIdRef.current = activeId;
 
   const messages = useQuery({
@@ -51,6 +67,44 @@ export function ChatPage({ token, user }: Props) {
     },
     onError: (_error, text) => {
       setFailedMessages((items) => [...items, { id: crypto.randomUUID(), contentMarkdown: text }]);
+    },
+  });
+
+  const direct = useMutation({
+    mutationFn: (userId: number) => ensureDirectConversation(token, userId),
+    onMutate: (userId) => setDirectUserId(userId),
+    onSuccess: (conversation) => {
+      setSelectedId(conversation.id);
+      setMobileShowChat(true);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+    onSettled: () => setDirectUserId(null),
+  });
+
+  const profile = useMutation({
+    mutationFn: (displayName: string) => updateProfile(token, displayName),
+    onSuccess: (nextUser) => {
+      onUserChange(nextUser);
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
+  const avatar = useMutation({
+    mutationFn: (file: File) => uploadAvatar(token, file),
+    onSuccess: (nextUser) => {
+      onUserChange(nextUser);
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
+  const createGroup = useMutation({
+    mutationFn: ({ title, memberIds }: { title: string; memberIds: number[] }) =>
+      createConversation(token, { type: "group", title, memberIds }),
+    onSuccess: (conversation) => {
+      setGroupDialogOpen(false);
+      setSelectedId(conversation.id);
+      setMobileShowChat(true);
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
 
@@ -117,12 +171,39 @@ export function ChatPage({ token, user }: Props) {
       <ConversationList
         className={listHiddenClass}
         conversations={conversations.data?.conversations ?? []}
+        user={user}
+        users={users.data?.users ?? []}
+        directUserId={directUserId}
+        onStartDirect={(userId) => direct.mutate(userId)}
+        onCreateGroup={() => setGroupDialogOpen(true)}
+        isUsersLoading={users.isLoading}
+        directError={direct.error}
+        onOpenProfile={() => setProfileOpen(true)}
         error={conversations.error}
         isLoading={conversations.isLoading}
         onRetry={() => conversations.refetch()}
         selectedId={activeId}
         onSelect={handleSelect}
       />
+      {profileOpen ? (
+        <ProfileDrawer
+          user={user}
+          saving={profile.isPending || avatar.isPending}
+          error={profile.error ?? avatar.error}
+          onClose={() => setProfileOpen(false)}
+          onSaveName={(displayName) => profile.mutate(displayName)}
+          onUploadAvatar={(file) => avatar.mutate(file)}
+        />
+      ) : null}
+      {groupDialogOpen ? (
+        <CreateGroupDialog
+          users={(users.data?.users ?? []).filter((item) => item.id !== user.id)}
+          isCreating={createGroup.isPending}
+          error={createGroup.error}
+          onClose={() => setGroupDialogOpen(false)}
+          onCreate={(title, memberIds) => createGroup.mutate({ title, memberIds })}
+        />
+      ) : null}
       <section className={`chat-panel ${chatVisibleClass}`.trim()}>
         {activeId ? (
           <>

@@ -12,6 +12,10 @@ type fakeRepo struct {
 	workspaceUserCount int
 	listWorkspaceID    int64
 	listUserID         int64
+	directWorkspaceID  int64
+	directCreatedBy    int64
+	directMemberIDs    []int64
+	directPairKey      string
 }
 
 func (f *fakeRepo) Create(ctx context.Context, input CreateConversationInput) (Conversation, error) {
@@ -25,6 +29,14 @@ func (f *fakeRepo) CountUsersInWorkspace(ctx context.Context, workspaceID int64,
 		return f.workspaceUserCount, nil
 	}
 	return len(memberIDs), nil
+}
+
+func (f *fakeRepo) EnsureDirect(ctx context.Context, workspaceID int64, createdBy int64, memberIDs []int64, pairKey string) (Conversation, error) {
+	f.directWorkspaceID = workspaceID
+	f.directCreatedBy = createdBy
+	f.directMemberIDs = memberIDs
+	f.directPairKey = pairKey
+	return Conversation{ID: 43, WorkspaceID: workspaceID, Type: "direct"}, nil
 }
 
 func (f *fakeRepo) ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error) {
@@ -120,6 +132,24 @@ func TestCreateDeduplicatesMembersAndIncludesCreatorOnce(t *testing.T) {
 		if repo.memberIDs[i] != want[i] {
 			t.Fatalf("got members %v want %v", repo.memberIDs, want)
 		}
+	}
+}
+
+func TestEnsureDirectValidatesAndDelegates(t *testing.T) {
+	repo := &fakeRepo{}
+	conversation, err := NewService(repo).EnsureDirect(context.Background(), 1, 7, 3)
+	if err != nil {
+		t.Fatalf("EnsureDirect returned error: %v", err)
+	}
+	if conversation.ID != 43 || repo.directCreatedBy != 7 || repo.directPairKey != "3:7" {
+		t.Fatalf("unexpected direct conversation: %+v, repo: %+v", conversation, repo)
+	}
+}
+
+func TestEnsureDirectRejectsSelf(t *testing.T) {
+	_, err := NewService(&fakeRepo{}).EnsureDirect(context.Background(), 1, 7, 7)
+	if !errors.Is(err, ErrDirectSelf) {
+		t.Fatalf("got %v want ErrDirectSelf", err)
 	}
 }
 

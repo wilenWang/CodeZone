@@ -24,6 +24,20 @@ describe("MessageComposer", () => {
     expect(onSend).toHaveBeenCalledWith("Hello");
   });
 
+  it("does not send Enter while an IME composition is active", () => {
+    const onSend = vi.fn();
+    const { container } = render(<MessageComposer disabled={false} onSend={onSend} />);
+    const input = container.querySelector("textarea");
+    expect(input).not.toBeNull();
+    fireEvent.change(input!, { target: { value: "nihao" } });
+    fireEvent.compositionStart(input!);
+    fireEvent.keyDown(input!, { key: "Enter", code: "Enter", shiftKey: false, keyCode: 229 });
+    expect(onSend).not.toHaveBeenCalled();
+    fireEvent.compositionEnd(input!);
+    fireEvent.keyDown(input!, { key: "Enter", code: "Enter", shiftKey: false });
+    expect(onSend).toHaveBeenCalledWith("nihao");
+  });
+
   it("does not send on Shift+Enter", () => {
     const onSend = vi.fn();
     const { container } = render(<MessageComposer disabled={false} onSend={onSend} />);

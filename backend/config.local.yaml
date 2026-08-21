@@ -8,3 +8,10 @@ session_secret: "dev-session-secret-change-me"
 cors_origin: "http://localhost:5173"
 dev_seed: true
 enable_dev_login: true
+oss:
+  end_point: "REPLACE_ME"
+  access_key_ID: "REPLACE_ME"
+  access_key_secret: "REPLACE_ME"
+  bucket_name: "REPLACE_ME"
+  oss_url: "https://REPLACE_ME"
+  path_prefix: "dev/codezone"

@@ -55,6 +55,64 @@ func (r *SQLRepository) Create(ctx context.Context, input CreateConversationInpu
 	}, nil
 }
 
+func (r *SQLRepository) EnsureDirect(ctx context.Context, workspaceID int64, createdBy int64, memberIDs []int64, pairKey string) (Conversation, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Conversation{}, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `SELECT id FROM users WHERE id IN (?, ?) ORDER BY id FOR UPDATE`, memberIDs[0], memberIDs[1]); err != nil {
+		return Conversation{}, err
+	}
+
+	var conversation Conversation
+	var title sql.NullString
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, workspace_id, type, title
+		FROM conversations
+		WHERE workspace_id = ? AND direct_pair_key = ?
+		LIMIT 1
+	`, workspaceID, pairKey).Scan(&conversation.ID, &conversation.WorkspaceID, &conversation.Type, &title)
+	if err == nil {
+		if title.Valid {
+			conversation.Title = &title.String
+		}
+		return conversation, tx.Commit()
+	}
+	if err != sql.ErrNoRows {
+		return Conversation{}, err
+	}
+
+	result, err := tx.ExecContext(ctx, `
+		INSERT INTO conversations (workspace_id, type, title, created_by, direct_pair_key)
+		VALUES (?, 'direct', NULL, ?, ?)
+	`, workspaceID, createdBy, pairKey)
+	if err != nil {
+		return Conversation{}, err
+	}
+	conversationID, err := result.LastInsertId()
+	if err != nil {
+		return Conversation{}, err
+	}
+	for _, memberID := range memberIDs {
+		role := "member"
+		if memberID == createdBy {
+			role = "owner"
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO conversation_members (conversation_id, user_id, role)
+			VALUES (?, ?, ?)
+		`, conversationID, memberID, role); err != nil {
+			return Conversation{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return Conversation{}, err
+	}
+	return Conversation{ID: conversationID, WorkspaceID: workspaceID, Type: "direct"}, nil
+}
+
 func (r *SQLRepository) ListForUser(ctx context.Context, workspaceID int64, userID int64) ([]Conversation, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT

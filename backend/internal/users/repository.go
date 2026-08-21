@@ -40,6 +40,21 @@ func (r *Repository) FindByID(ctx context.Context, id int64) (User, error) {
 	return scanUser(r.db.QueryRowContext(ctx, query, id))
 }
 
+func (r *Repository) UpdateProfile(ctx context.Context, userID int64, displayName string, avatarURL *string) (User, error) {
+	if avatarURL == nil {
+		_, err := r.db.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, displayName, userID)
+		if err != nil {
+			return User{}, err
+		}
+	} else {
+		_, err := r.db.ExecContext(ctx, `UPDATE users SET avatar_url = ? WHERE id = ?`, *avatarURL, userID)
+		if err != nil {
+			return User{}, err
+		}
+	}
+	return r.FindByID(ctx, userID)
+}
+
 func (r *Repository) List(ctx context.Context, workspaceID int64) ([]User, error) {
 	const query = `
 		SELECT id, workspace_id, username, display_name, avatar_url, user_type

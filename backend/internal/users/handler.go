@@ -7,11 +7,16 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service    *Service
+	pathPrefix string
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, pathPrefix ...string) *Handler {
+	prefix := "dev/codezone"
+	if len(pathPrefix) > 0 && pathPrefix[0] != "" {
+		prefix = pathPrefix[0]
+	}
+	return &Handler{service: service, pathPrefix: prefix}
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
