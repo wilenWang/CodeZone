@@ -7,6 +7,7 @@ type Props = {
   users?: User[];
   selectedId: number | null;
   directUserId?: number | null;
+  selectedDirectUserId?: number | null;
   onSelect: (id: number) => void;
   onStartDirect?: (userId: number) => void;
   onCreateGroup?: () => void;
@@ -25,6 +26,7 @@ export function ConversationList({
   users = [],
   selectedId,
   directUserId = null,
+  selectedDirectUserId = null,
   onSelect,
   onStartDirect = () => {},
   onCreateGroup = () => {},
@@ -82,7 +84,11 @@ export function ConversationList({
         directUsers.map((item) => (
           <button
             key={item.id}
-            className={directUserId === item.id ? "direct-user-row selected" : "direct-user-row"}
+            className={
+              directUserId === item.id || selectedDirectUserId === item.id
+                ? "direct-user-row selected"
+                : "direct-user-row"
+            }
             type="button"
             onClick={() => onStartDirect(item.id)}
             disabled={directUserId !== null}

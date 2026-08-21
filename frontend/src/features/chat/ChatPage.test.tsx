@@ -8,6 +8,8 @@ const user: User = { id: 1, username: "alice", displayName: "Alice", avatarUrl: 
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
+  listUsers: vi.fn(),
+  ensureDirectConversation: vi.fn(),
   listMessages: vi.fn(),
   markRead: vi.fn(),
   sendMessage: vi.fn(),
@@ -19,6 +21,8 @@ vi.mock("../../lib/api", async () => {
   return {
     ...actual,
     listConversations: mocks.listConversations,
+    listUsers: mocks.listUsers,
+    ensureDirectConversation: mocks.ensureDirectConversation,
     listMessages: mocks.listMessages,
     markRead: mocks.markRead,
     sendMessage: mocks.sendMessage,
@@ -62,6 +66,28 @@ describe("ChatPage", () => {
     });
     mocks.listMessages.mockResolvedValue({ messages: [] });
     mocks.markRead.mockResolvedValue({ ok: true });
+    mocks.listUsers.mockResolvedValue({
+      users: [user, { id: 2, username: "bob", displayName: "Bob", avatarUrl: null, userType: "human" }],
+    });
+    mocks.ensureDirectConversation.mockResolvedValue({
+      id: 2,
+      type: "direct",
+      title: null,
+      lastMessageId: null,
+      lastMessageAt: null,
+      unreadCount: 0,
+    });
+  });
+
+  it("highlights the direct user whose conversation is active", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Bob");
+    const bobRow = container.querySelector<HTMLButtonElement>(".direct-user-row");
+    expect(bobRow).toBeTruthy();
+    bobRow!.click();
+    // wait until the direct-conversation mutation has fully settled (row re-enabled)
+    await waitFor(() => expect(bobRow!.disabled).toBe(false));
+    expect(bobRow!.className).toContain("selected");
   });
 
   it("shows the current user's display name and username", async () => {

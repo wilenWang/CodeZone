@@ -34,6 +34,7 @@ export function ChatPage({ token, user, onUserChange }: Props) {
   const [failedMessages, setFailedMessages] = useState<{ id: string; contentMarkdown: string }[]>([]);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [directUserId, setDirectUserId] = useState<number | null>(null);
+  const [directPeers, setDirectPeers] = useState<Record<number, number>>({});
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const activeIdRef = useRef<number | null>(null);
@@ -73,7 +74,8 @@ export function ChatPage({ token, user, onUserChange }: Props) {
   const direct = useMutation({
     mutationFn: (userId: number) => ensureDirectConversation(token, userId),
     onMutate: (userId) => setDirectUserId(userId),
-    onSuccess: (conversation) => {
+    onSuccess: (conversation, userId) => {
+      setDirectPeers((peers) => ({ ...peers, [conversation.id]: userId }));
       setSelectedId(conversation.id);
       setMobileShowChat(true);
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -111,6 +113,8 @@ export function ChatPage({ token, user, onUserChange }: Props) {
   const activeConversation = (conversations.data?.conversations ?? []).find(
     (item: Conversation) => item.id === activeId,
   );
+
+  const selectedDirectUserId = activeId !== null ? (directPeers[activeId] ?? null) : null;
 
   const markReadMutation = useMutation({
     mutationFn: (conversationId: number) => markRead(token, conversationId),
@@ -174,6 +178,7 @@ export function ChatPage({ token, user, onUserChange }: Props) {
         user={user}
         users={users.data?.users ?? []}
         directUserId={directUserId}
+        selectedDirectUserId={selectedDirectUserId}
         onStartDirect={(userId) => direct.mutate(userId)}
         onCreateGroup={() => setGroupDialogOpen(true)}
         isUsersLoading={users.isLoading}
